@@ -33,7 +33,7 @@ export default function App() {
   const payInput = useRef();
 
   const [spv, setSpv] = useState(null);
-  const lastSync = useRef(null);
+  const lastSync = useRef(undefined); // undefined = încă nu s-au încărcat datele (serverul poate porni mai târziu)
 
   const refresh = useCallback(async () => {
     const [s, a, st] = await Promise.all([api.state(), api.analysis(), api.spvStatus()]);
@@ -43,7 +43,19 @@ export default function App() {
     lastSync.current = st.last_sync;
   }, []);
 
-  useEffect(() => { refresh().catch((e) => setMsg(`Serverul nu răspunde: ${e.message}`)); }, [refresh]);
+  // la pornire serverul poate fi încă în curs de pornire: reîncercăm câteva secunde
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      for (let i = 0; i < 30 && !stop; i++) {
+        try { await refresh(); setMsg(""); return; } catch (e) {
+          setMsg(i < 29 ? "Se pornește serverul..." : `Serverul nu răspunde: ${e.message}`);
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+    })();
+    return () => { stop = true; };
+  }, [refresh]);
 
   // sincronizarea cu SPV rulează pe server; aici doar aflăm când au sosit facturi noi
   useEffect(() => {

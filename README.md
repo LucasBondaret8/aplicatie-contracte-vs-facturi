@@ -4,11 +4,13 @@ Verifică automat facturile recurente primite prin **RO e-Factura** față de **
 
 ## Pornire
 
-Ai nevoie de Python 3.12 și Node.js 20 sau mai nou.
+**Dintr-un click (Windows):** dublu-click pe `Porneste Bill vs Signed.bat`. Prima dată instalează pachetele (câteva minute), apoi pornește serverul și interfața în două ferestre minimizate, încarcă datele demo dacă nu există date și deschide browserul la http://localhost:5173. Închiderea celor două ferestre „Bill vs Signed” oprește aplicația. Fișierul fixează data de lucru la 24.10.2026 (ca demo-ul să arate mereu la fel) și sincronizarea SPV la 2 minute.
+
+**Manual:** ai nevoie de Python 3.12 și Node.js 20 sau mai nou.
 
 ```bash
 # backend (o singură dată)
-pip install fastapi "uvicorn[standard]" python-multipart anthropic pypdf pytest httpx
+pip install -r backend/requirements.txt
 
 # backend
 cd backend

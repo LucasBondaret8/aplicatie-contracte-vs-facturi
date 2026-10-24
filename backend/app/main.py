@@ -35,6 +35,9 @@ async def lifespan(_app):
             await asyncio.sleep(SYNC_MINUTES * 60)
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(sync_spv)
+    # BVS_DEMO=1 (pornirea dintr-un click): la prima pornire, fără date, se încarcă datele demo
+    if os.environ.get("BVS_DEMO") and not store.data["invoices"] and not store.data["contracts"]:
+        demo_load()
     task = asyncio.create_task(loop())
     yield
     task.cancel()
