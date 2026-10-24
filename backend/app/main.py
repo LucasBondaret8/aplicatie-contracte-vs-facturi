@@ -15,6 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
 
+from . import supabase
 from .accounting import journal_entries, opening_entries
 from .anaf import AnafError, AnafSource, current_source
 from .efactura import EFacturaError, normalize_cui, parse_upload
@@ -23,6 +24,7 @@ from .rules import analyze, ro
 from .store import Store
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "demo"
+DEMO_SUPABASE_DIR = Path(__file__).resolve().parents[2] / "demo_supabase"
 SYNC_MINUTES = float(os.environ.get("BVS_SYNC_MINUTES", "60"))
 FRONTEND_URL = os.environ.get("BVS_FRONTEND_URL", "http://localhost:5173")
 log = logging.getLogger("bvs")
@@ -38,7 +40,8 @@ async def lifespan(_app):
                 await asyncio.to_thread(sync_spv)
     # BVS_DEMO=1 (pornirea dintr-un click): la prima pornire, fără date, se încarcă datele demo
     if os.environ.get("BVS_DEMO") and not store.data["invoices"] and not store.data["contracts"]:
-        demo_load()
+        with contextlib.suppress(HTTPException):  # Supabase indisponibil: serverul pornește oricum
+            demo_load()
     task = asyncio.create_task(loop())
     yield
     task.cancel()
@@ -386,11 +389,30 @@ def dispute_email(iid: str):
 
 # ---------- preluare automată din SPV ----------
 
+def sync_supabase_contracts() -> list[str]:
+    """Contractele noi din bucket-ul `contracte`: AI-ul (sau extractorul fără AI) completează fișa. Întoarce erorile."""
+    done = {c.get("source_file") for c in store.data["contracts"]}
+    errors = []
+    for name in supabase.list_files(supabase.CONTRACTS_BUCKET):
+        if not name.lower().endswith((".pdf", ".txt")) or f"supabase:{name}" in done:
+            continue
+        result = extract_contract(supabase.download(supabase.CONTRACTS_BUCKET, name), name)
+        c = result["fields"]
+        c.update(supplier_cui=normalize_cui(c.get("supplier_cui")), source_file=f"supabase:{name}", extracted_by=result["source"])
+        if not (c["supplier_cui"] and c.get("unit_price") and c.get("start_date")):
+            errors.append(f"Contractul {name} nu a putut fi citit automat. Completează fișa în Contracte furnizori.")
+            continue
+        store.upsert_contract(c)
+    return errors
+
+
 def sync_spv() -> dict:
     """Descarcă facturile noi primite în SPV și le verifică. Rulează periodic și la cerere."""
     src = current_source()
     spv = store.data.setdefault("spv", {"seen": [], "last_sync": None, "last_new": 0, "last_error": None})
     try:
+        # cu Supabase, contractele vin din același proiect: întâi fișele, ca facturile să fie verificate pe loc
+        contract_errors = sync_supabase_contracts() if src.name == "supabase" else []
         msgs = src.pending_messages(set(spv["seen"]))
         parsed = []
         for m in msgs:
@@ -400,8 +422,9 @@ def sync_spv() -> dict:
                 parsed.append(inv)
         added = store.add_invoices(parsed)
         spv["seen"] += [m["id"] for m in msgs]
-        spv.update(last_sync=datetime.now().isoformat(timespec="minutes"), last_new=added, last_error=None)
-    except (AnafError, EFacturaError, OSError) as e:
+        spv.update(last_sync=datetime.now().isoformat(timespec="minutes"), last_new=added,
+                   last_error=" ".join(contract_errors) or None)
+    except (AnafError, EFacturaError, supabase.SupabaseError, OSError) as e:
         spv.update(last_sync=datetime.now().isoformat(timespec="minutes"), last_new=0, last_error=str(e))
         log.warning("Sincronizare SPV eșuată: %s", e)
     store.save()
@@ -414,7 +437,7 @@ def spv_status():
     spv = store.data.get("spv") or {}
     return {
         "mode": src.name,
-        "connected": src.name == "simulat" or AnafSource.connected(),
+        "connected": src.name in ("simulat", "supabase") or AnafSource.connected(),
         "connect_url": "/api/anaf/connect" if src.name == "anaf" else None,
         "every_minutes": SYNC_MINUTES,
         "last_sync": spv.get("last_sync"), "last_new": spv.get("last_new", 0), "last_error": spv.get("last_error"),
@@ -453,8 +476,26 @@ def anaf_callback(code: str = "", error: str = ""):
 
 @app.post("/api/demo/load")
 def demo_load():
-    """Date demo: facturile din demo/facturi sunt deja în aplicație; cele din demo/spv sosesc la prima sincronizare."""
+    """Date demo: facturile din demo/facturi sunt deja în aplicație; cele din demo/spv sosesc la prima sincronizare.
+
+    Cu Supabase configurat, contractele și facturile vin din bucket-urile proiectului (toate sosesc ca NOI),
+    iar plățile din demo_supabase/plati.csv.
+    """
     store.reset()
+    if supabase.configured():
+        if (DEMO_SUPABASE_DIR / "plati.csv").exists():
+            rows = list(csv.DictReader(io.StringIO((DEMO_SUPABASE_DIR / "plati.csv").read_text("utf-8-sig")), delimiter=";"))
+            store.set_payments([{"invoice_number": r["numar_factura"], "supplier_cui": normalize_cui(r["cui_furnizor"]),
+                                 "date": r["data"], "amount": float(r["suma"]), "method": r.get("metoda") or "banca"} for r in rows])
+        store.data["opening"] = {"banca": 250000.0, "casa": 30000.0}
+        # firma din facturile demo_supabase (cumpărătorul de pe XML-uri)
+        store.data["company"].update(name="Demo Consult SRL", cui="40000001", regcom="J40/1001/2020",
+                                     adresa="Str. Exemplu nr. 10, București")
+        store.save()
+        st = sync_spv()
+        if st["last_error"] and not st["last_new"]:  # Supabase indisponibil, nu doar un contract necitit
+            raise HTTPException(502, st["last_error"])
+        return {"ok": True, "warning": st["last_error"]}
     for c in json.loads((DEMO_DIR / "contracte.json").read_text("utf-8")):
         store.upsert_contract(c)
     invoices = []

@@ -6,6 +6,7 @@ economia posibilă (nu e vina furnizorului), raportată separat în sumar.
 """
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from datetime import date, timedelta
 
@@ -107,19 +108,52 @@ def match_contract(inv: dict, contracts: list[dict]) -> dict | None:
     return max(candidates, key=score)
 
 
-def check_invoice(inv: dict, contract: dict | None, payments: list[dict], today: date, delivery: dict | None = None) -> list[dict]:
+def new_line_indexes(invoices: list[dict], contracts: list[dict]) -> dict[int, set[int]]:
+    """Liniile care apar pentru prima dată pe facturile unui contract (ex. un serviciu facturat în plus).
+
+    Referința sunt liniile facturilor anterioare ale aceluiași contract; e nevoie de cel puțin 2 facturi
+    anterioare. O linie nouă rămâne „nouă” și luna următoare, până o explică un contract / act adițional.
+    Cheia rezultatului e id(factură).
+    """
+    def norm(desc: str) -> str:
+        return re.sub(r"[^a-zăâîșț]+", " ", (desc or "").lower()).strip()
+
+    known, count, out = defaultdict(set), defaultdict(int), {}
+    for inv in sorted(invoices, key=lambda i: (i.get("issue_date", ""), i.get("number", ""))):
+        c = match_contract(inv, contracts)
+        if not c:
+            continue
+        names = [norm(l["description"]) for l in inv.get("lines", [])]
+        new = set()
+        if count[c["id"]] >= 2 and any(n in known[c["id"]] for n in names):
+            new = {i for i, n in enumerate(names) if n not in known[c["id"]] and not is_penalty_line(inv["lines"][i])}
+        known[c["id"]].update(n for i, n in enumerate(names) if i not in new)
+        count[c["id"]] += 1
+        out[id(inv)] = new
+    return out
+
+
+def check_invoice(inv: dict, contract: dict | None, payments: list[dict], today: date, delivery: dict | None = None,
+                  new_lines: set[int] = frozenset()) -> list[dict]:
     alerts: list[dict] = []
     issue = _d(inv.get("issue_date"))
     due = _d(inv.get("due_date"))
     total = float(inv.get("total_with_vat") or inv.get("payable") or 0)
 
+    # reduceri (-) / taxe (+) la nivel de document, ex. discountul contractual
+    allowances = inv.get("allowances") or []
+    adj = sum(a["amount"] if a["charge"] else -a["amount"] for a in allowances)
+    adj_vat = sum((a["amount"] if a["charge"] else -a["amount"]) * a["vat_pct"] / 100 for a in allowances)
+
     # --- coerența internă a facturii (nu depinde de contract) ---
-    lines_net = sum(l["line_total"] for l in inv.get("lines", []))
+    gross = sum(l["line_total"] for l in inv.get("lines", []))
+    lines_net = gross + adj
     if abs(lines_net - inv.get("total_without_vat", 0)) > MONEY_TOL:
+        after = " (după reduceri)" if allowances else ""
         alerts.append(_alert("TOTAL_CALC", "error", "Total greșit calculat",
-                             f"Suma liniilor este {ro(lines_net)}, dar factura are total fără TVA {ro(inv['total_without_vat'])}.",
+                             f"Suma liniilor{after} este {ro(lines_net)}, dar factura are total fără TVA {ro(inv['total_without_vat'])}.",
                              inv["total_without_vat"] - lines_net))
-    vat_calc = sum(l["line_total"] * l["vat_pct"] / 100 for l in inv.get("lines", []))
+    vat_calc = sum(l["line_total"] * l["vat_pct"] / 100 for l in inv.get("lines", [])) + adj_vat
     if abs(vat_calc - inv.get("vat_total", 0)) > MONEY_TOL * 2:
         alerts.append(_alert("VAT_CALC", "error", "TVA calculat greșit",
                              f"TVA corect pe linii: {ro(vat_calc)}, pe factură: {ro(inv['vat_total'])}.",
@@ -176,32 +210,41 @@ def check_invoice(inv: dict, contract: dict | None, payments: list[dict], today:
     billed_qty = 0.0
     main_price = 0.0
     main_vat = float(vat_rate or 0)
-    for l in inv.get("lines", []):
+    factor = lines_net / gross if gross else 1.0  # prețul unitar efectiv, după reducerile de pe factură
+    for i, l in enumerate(inv.get("lines", [])):
         if is_penalty_line(l):
             if not contract.get("late_penalty_pct_per_day"):
                 alerts.append(_alert("PENALTY", "error", "Penalități nepermise de contract",
                                      f"Linia „{l['description']}” ({ro(l['line_total'])}) – contractul nu prevede penalități.",
                                      l["line_total"] * (1 + l["vat_pct"] / 100)))
             continue
+        if i in new_lines:
+            alerts.append(_alert("NEW_LINE", "warning", "Linie care nu apare în contract",
+                                 f"„{l['description']}” ({ro(l['line_total'])}) apare pentru prima dată pe facturile acestui contract. "
+                                 f"Verifică dacă e prevăzută în contract sau într-un act adițional.",
+                                 l["line_total"] * (1 + l["vat_pct"] / 100)))
+            continue
+        price = l["unit_price"] * factor  # cu reducerile de la nivelul facturii (ex. discount pe document)
+        after = " după reducerile de pe factură" if allowances else ""
         billed_qty += l["quantity"]
-        main_price, main_vat = l["unit_price"], l["vat_pct"]
+        main_price, main_vat = price, l["vat_pct"]
         if vat_rate is not None and abs(l["vat_pct"] - float(vat_rate)) > 0.01:
             alerts.append(_alert("VAT_RATE", "error", "Cotă TVA diferită",
                                  f"„{l['description']}”: TVA {l['vat_pct']:g}% pe factură, {float(vat_rate):g}% legal/în contract."))
-        if allowed and l["unit_price"] > allowed + 0.01:
+        if allowed and price > allowed + 0.01:
             idx = " (inclusiv indexarea maximă permisă)" if allowed != float(contract.get("unit_price") or 0) else ""
             dsc = f", iar cu reducerea de {disc:g}% din contract {ro(agreed)}" if disc else ""
             alerts.append(_alert("PRICE", "error", "Preț peste contract",
-                                 f"„{l['description']}”: {ro(l['unit_price'])}/{unit} facturat, maxim permis {ro(allowed)}{idx}{dsc}.",
-                                 (l["unit_price"] - agreed) * l["quantity"] * (1 + l["vat_pct"] / 100)))
-        elif disc and l["unit_price"] > agreed + 0.01:
+                                 f"„{l['description']}”: {ro(price)}/{unit} facturat{after}, maxim permis {ro(allowed)}{idx}{dsc}.",
+                                 (price - agreed) * l["quantity"] * (1 + l["vat_pct"] / 100)))
+        elif disc and price > agreed + 0.01:
             until = _d(contract.get("discount_until"))
             alerts.append(_alert("DISCOUNT_MISSING", "error", "Reducerea din contract nu e aplicată",
                                  f"Contractul prevede {disc:g}% reducere{f' până la {dmy(until)}' if until else ''}: "
-                                 f"{ro(l['unit_price'])}/{unit} facturat, cu reducere trebuia {ro(agreed)}.",
-                                 (l["unit_price"] - agreed) * l["quantity"] * (1 + l["vat_pct"] / 100)))
+                                 f"{ro(price)}/{unit} facturat{after}, cu reducere trebuia {ro(agreed)}.",
+                                 (price - agreed) * l["quantity"] * (1 + l["vat_pct"] / 100)))
         if qty_expected and not contract.get("is_licenses") and l["quantity"] > float(qty_expected) + 1e-9:
-            extra = (l["quantity"] - float(qty_expected)) * min(l["unit_price"], agreed or l["unit_price"])
+            extra = (l["quantity"] - float(qty_expected)) * min(price, agreed or price)
             alerts.append(_alert("QUANTITY", "warning", "Cantitate peste contract",
                                  f"„{l['description']}”: {l['quantity']:g} facturate, contractul prevede {float(qty_expected):g}/perioadă.",
                                  extra * (1 + l["vat_pct"] / 100)))
@@ -293,11 +336,12 @@ def analyze(contracts: list[dict], invoices: list[dict], payments: list[dict], t
 
     results = []
     by_contract_period = defaultdict(list)
+    new_lines = new_line_indexes(invoices, contracts)
     for inv in invoices:
         c = match_contract(inv, contracts)
         pays = pay_by_inv[(normalize_cui(inv.get("supplier_cui")), inv.get("number"))]
         d = deliv.get((c["id"], period_key(inv))) if c else None
-        alerts = check_invoice(inv, c, pays, today, d)
+        alerts = check_invoice(inv, c, pays, today, d, new_lines.get(id(inv), set()))
         ref = _d(inv.get("period_start")) or _d(inv.get("issue_date")) or today
         res = {"invoice": inv, "contract_id": c["id"] if c else None, "paid": _r(sum(p["amount"] for p in pays)),
                "allowed_price": _r(contract_price(c, ref)) if c else None,

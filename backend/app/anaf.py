@@ -10,6 +10,8 @@ Două surse, aceeași interfață (`pending_messages` + `download`):
   și trebuie confirmați la prima conectare.
 * SimulatedSource – un „SPV” local pentru demo: fișierele din demo/spv/ sunt facturi
   care „sosesc” la prima sincronizare după încărcarea datelor demo.
+* SupabaseSource (supabase.py) – când SUPABASE_URL / SUPABASE_KEY sunt setate, bucket-ul
+  `facturi` din Supabase ține locul SPV-ului.
 """
 from __future__ import annotations
 
@@ -113,5 +115,9 @@ class SimulatedSource:
 
 
 def current_source():
+    from . import supabase
+
     cfg = anaf_config()
-    return AnafSource(cfg) if cfg else SimulatedSource()
+    if cfg:
+        return AnafSource(cfg)
+    return supabase.SupabaseSource() if supabase.configured() else SimulatedSource()
