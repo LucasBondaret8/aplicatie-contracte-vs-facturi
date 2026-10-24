@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api.js";
-import { Bell, Book, Caret, Contrast, Logo, Logout } from "./icons.jsx";
+import { Bell, Book, Caret, Contrast, Logo, Logout, Sync } from "./icons.jsx";
 import Intrari from "./windows/Intrari.jsx";
 import Plati from "./windows/Plati.jsx";
 import Furnizori from "./windows/Furnizori.jsx";
@@ -32,13 +32,44 @@ export default function App() {
   const invInput = useRef();
   const payInput = useRef();
 
+  const [spv, setSpv] = useState(null);
+  const lastSync = useRef(null);
+
   const refresh = useCallback(async () => {
-    const [s, a] = await Promise.all([api.state(), api.analysis()]);
+    const [s, a, st] = await Promise.all([api.state(), api.analysis(), api.spvStatus()]);
     setData(s);
     setAnalysis(a);
+    setSpv(st);
+    lastSync.current = st.last_sync;
   }, []);
 
   useEffect(() => { refresh().catch((e) => setMsg(`Serverul nu răspunde: ${e.message}`)); }, [refresh]);
+
+  // sincronizarea cu SPV rulează pe server; aici doar aflăm când au sosit facturi noi
+  useEffect(() => {
+    const t = setInterval(async () => {
+      try {
+        const st = await api.spvStatus();
+        if (st.last_sync !== lastSync.current) {
+          await refresh();
+          if (st.last_new) setMsg(`Au sosit ${st.last_new} facturi noi din SPV – le găsești marcate NOU în Intrări`);
+        } else setSpv(st);
+      } catch { /* serverul repornește */ }
+    }, 20000);
+    return () => clearInterval(t);
+  }, [refresh]);
+
+  const syncSpv = useCallback(async () => {
+    setMsg("Sincronizare cu SPV...");
+    try {
+      const st = await api.spvSync();
+      await refresh();
+      setMsg(st.last_error ? `SPV: ${st.last_error}` : st.last_new
+        ? `Au sosit ${st.last_new} facturi noi din SPV – le găsești marcate NOU în Intrări` : "SPV: nicio factură nouă");
+    } catch (e) {
+      setMsg(`SPV: ${e.message}`);
+    }
+  }, [refresh]);
   useEffect(() => { if (msg) { const t = setTimeout(() => setMsg(""), 6000); return () => clearTimeout(t); } }, [msg]);
 
   const run = useCallback(async (label, fn) => {
@@ -60,12 +91,12 @@ export default function App() {
   const cmap = useMemo(() => Object.fromEntries(data.contracts.map((c) => [c.id, c])), [data.contracts]);
   const company = data.invoices[0]?.customer_name || "Demo Distribuție SRL";
   const today = analysis?.summary.today;
-  const problems = (analysis?.summary.error || 0) + (analysis?.summary.warning || 0) + (analysis?.summary.missing || 0);
+  const problems = (analysis?.summary.error || 0) + (analysis?.summary.warning || 0) + (analysis?.summary.missing || 0) + (spv?.new_invoices || 0);
 
   const importInvoices = () => invInput.current.click();
   const importPayments = () => payInput.current.click();
   const loadDemo = () => run("Date demo", async () => { await api.loadDemo(); open("intrari"); return "Date demo încărcate"; });
-  const ctx = { data, analysis, cmap, refresh, run, open, setMsg, today, importInvoices, importPayments };
+  const ctx = { data, analysis, cmap, refresh, run, open, setMsg, today, importInvoices, importPayments, syncSpv };
 
   // [eticheta, acțiune | null, scurtătură, submeniu]
   const menus = [
@@ -75,7 +106,8 @@ export default function App() {
     ]],
     ["Operații", [
       ["Articole contabile"], ["Intrări", () => open("intrari"), "ALT+3"], ["Ieșiri", null, "ALT+4"],
-      ["e-Facturi", importInvoices], ["Intrări - valută"], ["Ieșiri - valută"], ["Imobilizări"], ["Transferuri"],
+      ["e-Facturi", null, null, [["Sincronizare cu SPV acum", syncSpv], ["Facturi noi din SPV", () => open("intrari", { onlyNew: true })],
+        ["Import din fișiere (XML / ZIP)", importInvoices]]], ["Intrări - valută"], ["Ieșiri - valută"], ["Imobilizări"], ["Transferuri"],
       ["Bonuri de consum"], ["Producție"],
       ["Alte operații cu stocuri", null, null, [["Inventariere"], ["Dare în folosință ob. inv."], ["Dezmembrări"], ["Operații speciale"], ["Reglări descărcare"]]],
       "-",
@@ -162,6 +194,13 @@ export default function App() {
             <div className="menu"><button title="Intervalul de lucru">Interval (01.01.2026 - 31.12.9999) <Caret /></button></div>
           </nav>
           <span className="grow" />
+          {spv && (
+            <button className={`top-item spv${spv.last_error ? " err" : ""}`} onClick={syncSpv}
+              title={`${spv.mode === "anaf" ? "Conectat la ANAF e-Factura" : "SPV simulat (demo)"} · sincronizare automată la ${spv.every_minutes} min · click = sincronizează acum${spv.last_error ? `\nEroare: ${spv.last_error}` : ""}`}>
+              <Sync /> SPV{spv.mode === "simulat" ? " (demo)" : ""}: {spv.last_sync ? `sincronizat ${spv.last_sync.slice(11, 16)}` : "nesincronizat"}
+              {spv.new_invoices > 0 && <span className="tag-new">{spv.new_invoices} NOI</span>}
+            </button>
+          )}
           <span className="top-item"><Book /> {company}</span>
           <button className="top-item bell" title={`${problems} probleme de verificat`} onClick={() => open("verificare")}>
             <Bell />{problems > 0 && <span className="badge-n">{problems}</span>}
@@ -170,7 +209,9 @@ export default function App() {
           <button className="top-item" title="Ieșire" onClick={close}><Logout /></button>
         </header>
 
-        {msg && <div className="notice" onClick={() => setMsg("")}>{msg}</div>}
+        {msg && (
+          <div className="notice" onClick={() => { setMsg(""); if (/facturi noi din SPV/.test(msg)) open("intrari", { onlyNew: true }); }}>{msg}</div>
+        )}
 
         <W key={win.key} ctx={ctx} params={{ ...win.params, method: win.type === "casa" ? "casa" : win.type === "banca" ? "banca" : win.params.method }}
           onClose={close} />

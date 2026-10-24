@@ -26,6 +26,14 @@ Pentru extragerea contractelor cu Claude setează `ANTHROPIC_API_KEY` înainte d
 
 `BVS_TODAY=2026-10-24` fixează „data de azi” (util ca demo-ul să arate mereu la fel).
 
+## De unde vin facturile
+
+1. **Automat din SPV (RO e-Factura).** Serverul verifică singur SPV-ul la fiecare `BVS_SYNC_MINUTES` minute (implicit 60), descarcă facturile primite noi și le verifică pe loc față de contracte. Ele apar în Intrări marcate **NOU**, iar sus scrie „SPV: sincronizat 14:05 · 3 NOI” (click = sincronizează acum). **Validez** scoate factura din lista celor noi.
+   - **Demo (fără ANAF):** sursa e un SPV simulat, folderul `demo/spv/`. După „Date demo”, facturile din octombrie sosesc la prima sincronizare (pornește backend-ul cu `BVS_SYNC_MINUTES=2` ca să se vadă la demo).
+   - **Real:** înregistrează aplicația la ANAF (Servicii Online → Înregistrare utilizatori → Dezvoltatori aplicații, cu certificat digital calificat) și pornește backend-ul cu `ANAF_CLIENT_ID`, `ANAF_CLIENT_SECRET`, `ANAF_REDIRECT_URI` (https, terminată în `/api/anaf/callback`), `ANAF_CIF` și `ANAF_ENV=test|prod`. Apoi deschide `/api/anaf/connect` și autentifică-te o dată cu certificatul. Conectorul (`backend/app/anaf.py`) **nu a fost încă testat pe un cont ANAF real**.
+2. **De mână, direct în grilă.** Adaug (ALT+A) în Intrări deschide un rând nou editabil: Nr. doc., furnizor (din listă sau scris nou), data, scadența. Când alegi un furnizor cu contract, scadența și linia (denumire, UM, cantitate, preț, TVA) se completează din contract, iar „Preț contract / Diferență” se văd cât scrii. Liniile: Adaug (ALT+D) / Șterg (ALT+T) în grila de jos. **Salvez** (ALT+S) verifică factura față de contract, **Renunț** (ALT+R) anulează. Pentru furnizori externi, chitanțe sau facturi urgente. Dacă aceeași factură (furnizor + număr) sosește apoi din SPV, o înlocuiește pe cea manuală.
+3. **Din fișiere:** iconița de folder din Intrări importă XML / ZIP descărcate de mână.
+
 ## Interfața
 
 Arată și se folosește ca programele de contabilitate web cu care lucrează contabilii: bară laterală cu numele modulului, meniu Fișiere / Operații / Situații / Diverse / Administrare cu aceeași structură, grilă principală + grilă de detaliu cu antet gri, coloane de valori gri și „Neachitat” roz, rândul selectat albastru, rânduri validate cu lacăt, rând de filtre sub grilă, bara „Adaug / Modific / Șterg” și butoanele de jos (Validez, Plată, Stornez, N.C., Tipărire, Devalidez).
@@ -68,7 +76,7 @@ Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contab
 
 ## Date demo
 
-`python demo/generate_demo.py` regenerează 3 contracte, 30 de facturi și plățile. Erorile intenționate sunt în `ERORI_INTENTIONATE`, iar testele verifică exact acele alerte:
+`python demo/generate_demo.py` regenerează 3 contracte, 28 de facturi deja preluate + 3 care sosesc din SPV-ul simulat și plățile. Erorile intenționate sunt în `ERORI_INTENTIONATE`, iar testele verifică exact acele alerte:
 
 ```bash
 python -m pytest backend/tests
@@ -76,7 +84,7 @@ python -m pytest backend/tests
 
 ## Pași următori pentru produs
 
-- Descărcare automată din SPV prin API-ul ANAF (OAuth cu certificat digital).
+- Testarea conectorului ANAF pe un cont real (mediul de test ANAF, apoi producție).
 - Import plăți direct din exporturile SAGA (registru bancă / casă) și extrase MT940.
 - Mai multe firme pe un cont de contabil; autentificare; bază de date Postgres.
 - Curs BNR pentru contractele în EUR.

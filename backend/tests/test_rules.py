@@ -23,7 +23,7 @@ TODAY = date(2026, 10, 24)
 def result():
     build()
     invoices = []
-    for p in sorted((ROOT / "demo" / "facturi").glob("*.xml")):
+    for p in sorted([*(ROOT / "demo" / "facturi").glob("*.xml"), *(ROOT / "demo" / "spv").glob("*.xml")]):
         invoices += parse_upload(p.read_bytes(), p.name)
     rows = csv.DictReader((ROOT / "demo" / "plati.csv").open(encoding="utf-8-sig"), delimiter=";")
     payments = [{"invoice_number": r["numar_factura"], "supplier_cui": r["cui_furnizor"], "date": r["data"],

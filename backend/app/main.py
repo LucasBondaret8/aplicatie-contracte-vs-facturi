@@ -1,27 +1,47 @@
 """API FastAPI pentru Bill vs Signed."""
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import csv
 import io
 import json
+import logging
 import os
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 
+from .anaf import AnafError, AnafSource, current_source
 from .efactura import EFacturaError, normalize_cui, parse_upload
 from .extract import extract_contract
 from .rules import analyze, ro
 from .store import Store
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "demo"
-
-app = FastAPI(title="Bill vs Signed")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+SYNC_MINUTES = float(os.environ.get("BVS_SYNC_MINUTES", "60"))
+FRONTEND_URL = os.environ.get("BVS_FRONTEND_URL", "http://localhost:5173")
+log = logging.getLogger("bvs")
 store = Store()
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_app):
+    async def loop():
+        while True:
+            await asyncio.sleep(SYNC_MINUTES * 60)
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(sync_spv)
+    task = asyncio.create_task(loop())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="Bill vs Signed", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 def today() -> date:
@@ -66,14 +86,55 @@ async def invoices_import(files: list[UploadFile] = File(...)):
             parsed += parse_upload(await f.read(), f.filename or "")
         except (EFacturaError, Exception) as e:  # noqa: BLE001 - raportăm orice fișier stricat
             errors.append(str(e))
+    for inv in parsed:
+        inv["source"] = "import"
     added = store.add_invoices(parsed)
     return {"added": added, "parsed": len(parsed), "errors": errors}
 
 
+@app.post("/api/invoices/manual")
+def invoices_manual(body: dict):
+    """Factură introdusă de mână (furnizori externi, chitanțe, facturi urgente). Cu `id` = modificare."""
+    old = next((i for i in store.data["invoices"] if i["id"] == body.get("id")), None) if body.get("id") else None
+    if old and old.get("source") != "manual":
+        raise HTTPException(400, "Facturile primite prin e-Factura nu se modifică.")
+    if old and old.get("validated"):
+        raise HTTPException(400, "Factura este validată. Devalidează-o înainte de modificare.")
+    try:
+        lines = [{"description": str(l["description"]).strip(), "quantity": float(l["quantity"]),
+                  "unit_price": float(l["unit_price"]), "vat_pct": float(l["vat_pct"])} for l in body.get("lines", [])]
+        number, cui, issue = str(body["number"]).strip(), normalize_cui(body["supplier_cui"]), body["issue_date"]
+    except (KeyError, TypeError, ValueError) as e:
+        raise HTTPException(400, f"Factură incompletă: {e}") from e
+    lines = [l for l in lines if l["description"] and l["quantity"]]
+    if not number or not cui or not issue or not lines:
+        raise HTTPException(400, "Completează numărul, furnizorul, data și cel puțin o linie.")
+    for l in lines:
+        l["line_total"] = round(l["quantity"] * l["unit_price"], 2)
+    net = round(sum(l["line_total"] for l in lines), 2)
+    vat = round(sum(l["line_total"] * l["vat_pct"] / 100 for l in lines), 2)
+    customer = store.data["invoices"][0]["customer_name"] if store.data["invoices"] else ""
+    inv = {
+        "number": number, "issue_date": issue, "due_date": body.get("due_date") or issue,
+        "currency": body.get("currency") or "RON",
+        "period_start": body.get("period_start") or issue[:8] + "01", "period_end": body.get("period_end") or "",
+        "supplier_name": str(body.get("supplier_name") or "").strip() or cui, "supplier_cui": cui,
+        "customer_name": customer, "customer_cui": "", "lines": lines,
+        "total_without_vat": net, "vat_total": vat, "total_with_vat": round(net + vat, 2), "payable": round(net + vat, 2),
+        "source_file": "", "source": "manual",
+    }
+    if old:
+        inv["id"] = old["id"]
+    return store.save_manual_invoice(inv)
+
+
 @app.post("/api/invoices/{iid}/validated")
 def invoices_validate(iid: str, body: dict):
-    """Validez / Devalidez – o factură validată e blocată (nu se mai șterge)."""
-    inv = store.update_invoice(iid, validated=bool(body.get("value")))
+    """Validez / Devalidez – o factură validată e blocată (nu se mai șterge). Validarea o scoate din „noi”."""
+    fields = {"validated": bool(body.get("value"))}
+    if body.get("value"):
+        fields["new"] = False
+    inv = store.update_invoice(iid, **fields)
     if not inv:
         raise HTTPException(404, "Factură inexistentă")
     return inv
@@ -184,16 +245,84 @@ def dispute_email(iid: str):
     return {"subject": f"Contestație factura {inv['number']} – {inv['supplier_name']}", "body": body}
 
 
+# ---------- preluare automată din SPV ----------
+
+def sync_spv() -> dict:
+    """Descarcă facturile noi primite în SPV și le verifică. Rulează periodic și la cerere."""
+    src = current_source()
+    spv = store.data.setdefault("spv", {"seen": [], "last_sync": None, "last_new": 0, "last_error": None})
+    try:
+        msgs = src.pending_messages(set(spv["seen"]))
+        parsed = []
+        for m in msgs:
+            data, name = src.download(m)
+            for inv in parse_upload(data, name):
+                inv.update(source="spv", new=True, spv_id=m["id"], received_at=datetime.now().isoformat(timespec="minutes"))
+                parsed.append(inv)
+        added = store.add_invoices(parsed)
+        spv["seen"] += [m["id"] for m in msgs]
+        spv.update(last_sync=datetime.now().isoformat(timespec="minutes"), last_new=added, last_error=None)
+    except (AnafError, EFacturaError, OSError) as e:
+        spv.update(last_sync=datetime.now().isoformat(timespec="minutes"), last_new=0, last_error=str(e))
+        log.warning("Sincronizare SPV eșuată: %s", e)
+    store.save()
+    return spv_status()
+
+
+@app.get("/api/spv/status")
+def spv_status():
+    src = current_source()
+    spv = store.data.get("spv") or {}
+    return {
+        "mode": src.name,
+        "connected": src.name == "simulat" or AnafSource.connected(),
+        "connect_url": "/api/anaf/connect" if src.name == "anaf" else None,
+        "every_minutes": SYNC_MINUTES,
+        "last_sync": spv.get("last_sync"), "last_new": spv.get("last_new", 0), "last_error": spv.get("last_error"),
+        "new_invoices": sum(1 for i in store.data["invoices"] if i.get("new")),
+    }
+
+
+@app.post("/api/spv/sync")
+async def spv_sync():
+    return await asyncio.to_thread(sync_spv)
+
+
+@app.get("/api/anaf/connect")
+def anaf_connect():
+    src = current_source()
+    if src.name != "anaf":
+        raise HTTPException(400, "Conectorul ANAF nu e configurat (ANAF_CLIENT_ID / ANAF_CLIENT_SECRET / ANAF_REDIRECT_URI).")
+    return RedirectResponse(src.authorize_url())
+
+
+@app.get("/api/anaf/callback")
+def anaf_callback(code: str = "", error: str = ""):
+    """Adresa de întoarcere după autentificarea cu certificatul pe logincert.anaf.ro."""
+    if error or not code:
+        raise HTTPException(400, f"Autorizare ANAF refuzată: {error or 'lipsește codul'}")
+    src = current_source()
+    try:
+        src.exchange_code(code)
+    except AnafError as e:
+        raise HTTPException(502, str(e)) from e
+    sync_spv()
+    return RedirectResponse(FRONTEND_URL)
+
+
 # ---------- demo ----------
 
 @app.post("/api/demo/load")
 def demo_load():
+    """Date demo: facturile din demo/facturi sunt deja în aplicație; cele din demo/spv sosesc la prima sincronizare."""
     store.reset()
     for c in json.loads((DEMO_DIR / "contracte.json").read_text("utf-8")):
         store.upsert_contract(c)
     invoices = []
     for p in sorted((DEMO_DIR / "facturi").glob("*.xml")):
         invoices += parse_upload(p.read_bytes(), p.name)
+    for inv in invoices:
+        inv["source"] = "spv"
     store.add_invoices(invoices)
     rows = list(csv.DictReader(io.StringIO((DEMO_DIR / "plati.csv").read_text("utf-8-sig")), delimiter=";"))
     store.set_payments([{"invoice_number": r["numar_factura"], "supplier_cui": normalize_cui(r["cui_furnizor"]),

@@ -47,12 +47,31 @@ class Store:
                 k = (inv["supplier_cui"], inv["number"], inv.get("source_file"))
                 if k in keys:
                     continue
-                inv["id"] = uuid.uuid4().hex[:8]
+                # aceeași factură introdusă manual înainte: varianta din e-Factura o înlocuiește
+                manual = next((i for i in self.data["invoices"] if i.get("source") == "manual"
+                               and i["supplier_cui"] == inv["supplier_cui"] and i["number"] == inv["number"]), None)
+                if manual:
+                    inv.update(id=manual["id"], validated=manual.get("validated", False), replaced_manual=True)
+                    self.data["invoices"].remove(manual)
+                else:
+                    inv["id"] = uuid.uuid4().hex[:8]
                 self.data["invoices"].append(inv)
                 keys.add(k)
                 added += 1
             self.save()
             return added
+
+    def save_manual_invoice(self, inv: dict) -> dict:
+        """Adaugă sau înlocuiește o factură introdusă de mână (cheia: id)."""
+        with self.lock:
+            inv.setdefault("id", uuid.uuid4().hex[:8])
+            old = next((i for i in self.data["invoices"] if i["id"] == inv["id"]), None)
+            if old:
+                inv["validated"] = old.get("validated", False)
+                self.data["invoices"].remove(old)
+            self.data["invoices"].append(inv)
+            self.save()
+            return inv
 
     def update_invoice(self, iid: str, **fields) -> dict | None:
         with self.lock:

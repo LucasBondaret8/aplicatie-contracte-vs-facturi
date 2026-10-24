@@ -1,6 +1,6 @@
 // Componente de bază: zona de lucru, bare de butoane, grile, ferestre de dialog.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Chevrons, Pencil, Plus, Trash } from "./icons.jsx";
+import { Cancel, Chevrons, Pencil, Plus, Save, Trash } from "./icons.jsx";
 
 /** Scurtătură ALT + literă (ca în programele de contabilitate). */
 export function useAlt(letter, fn, enabled = true) {
@@ -49,14 +49,19 @@ export function TBtn({ icon, label, alt, onClick, disabled, title, active, class
   );
 }
 
-/** Bara „Adaug / Modific / Șterg” de deasupra unei grile. */
-export function LinkBar({ onAdd, onEdit, onDelete, keys = "AMS", tools, right, detalii }) {
+/** Bara „Adaug / Modific / Șterg” de deasupra unei grile. În modul de editare devine „Adaug / Salvez / Renunț”. */
+export function LinkBar({ onAdd, onEdit, onDelete, keys = "AMS", tools, right, detalii, editing }) {
   return (
     <div className="toolbar">
       <div className="tgroup">
-        <TBtn icon={<Plus />} label="Adaug" alt={keys[0]} onClick={onAdd} />
-        <TBtn icon={<Pencil />} label="Modific" alt={keys[1]} onClick={onEdit} />
-        <TBtn icon={<Trash />} label="Șterg" alt={keys[2]} onClick={onDelete} />
+        <TBtn icon={<Plus />} label="Adaug" alt={editing ? null : keys[0]} onClick={editing ? null : onAdd} />
+        {editing ? <>
+          <TBtn icon={<Save />} label="Salvez" alt="S" onClick={editing.save} className="save" />
+          <TBtn icon={<Cancel />} label="Renunț" alt="R" onClick={editing.cancel} />
+        </> : <>
+          <TBtn icon={<Pencil />} label="Modific" alt={keys[1]} onClick={onEdit} />
+          <TBtn icon={<Trash />} label="Șterg" alt={keys[2]} onClick={onDelete} />
+        </>}
       </div>
       {tools}
       <span className="grow" />
@@ -115,6 +120,7 @@ export function Grid({ columns, rows, getId = (r) => r.id, selected, onSelect, o
   }, [selected]);
 
   const onKey = (e) => {
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return; // tastele din câmpurile rândului editat
     const idx = sorted.findIndex((r) => getId(r) === selected);
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();

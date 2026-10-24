@@ -63,6 +63,7 @@ ERORI_INTENTIONATE = {
     "CLO-2026-03": ["OVERPAID"],
     "CLO-2026-05": ["QUANTITY"],
     "CLO-2026-09": ["OUT_OF_CONTRACT"],
+    "CLO-2026-10": ["OUT_OF_CONTRACT"],
     "OSE-1187": ["NO_CONTRACT"],
 }
 LUNI_LIPSA = {"c-it": ["2026-07"]}
@@ -121,16 +122,19 @@ def ubl(number, issue, due, supplier, lines, period, total_override=None):
 
 
 def build():
-    facturi_dir = OUT / "facturi"
-    facturi_dir.mkdir(exist_ok=True)
-    for old in facturi_dir.glob("*.xml"):
-        old.unlink()
+    # facturi/ = deja preluate în aplicație; spv/ = facturile din octombrie, care „sosesc” la prima sincronizare SPV
+    facturi_dir, spv_dir = OUT / "facturi", OUT / "spv"
+    for d in (facturi_dir, spv_dir):
+        d.mkdir(exist_ok=True)
+        for old in d.glob("*.xml"):
+            old.unlink()
     plati = []
 
     def emit(number, cid_or_supplier, issue, term, lines, period, pay="full", total_override=None):
         sup = SUPPLIERS[cid_or_supplier][:2] if isinstance(cid_or_supplier, str) else cid_or_supplier
         xml, total = ubl(number, issue, issue + timedelta(days=term), sup, lines, period, total_override)
-        (facturi_dir / f"{number}.xml").write_text(xml, "utf-8")
+        folder = spv_dir if issue >= date(2026, 10, 1) else facturi_dir
+        (folder / f"{number}.xml").write_text(xml, "utf-8")
         amount = {"full": total, "none": 0, "double": total * 2}.get(pay, pay)
         if amount:
             plati.append({"numar_factura": number, "cui_furnizor": "RO" + sup[1],
@@ -160,12 +164,12 @@ def build():
             pay = 1000.0 if m == 5 else ("none" if m == 10 else "full")
             emit(f"TSP-{tag}", "c-it", issue, 30, lines, per, pay=pay)
 
-        # curățenie (contract până la 31.08.2026)
-        if m <= 9:
+        # curățenie (contract până la 31.08.2026, dar furnizorul facturează în continuare)
+        if m <= 10:
             qty = 10 if m == 5 else 8
             emit(f"CLO-{tag}", "c-curatenie", date(2026, m, 2), 30,
                  [(f"Servicii curățenie – intervenții {tag}", qty, 250.0, 21)], per,
-                 pay="double" if m == 3 else ("none" if m == 9 else "full"),
+                 pay="double" if m == 3 else ("none" if m >= 9 else "full"),
                  total_override=2200.0 if m == 2 else None)
 
     emit("OSE-1187", ("Office Supplies Express SRL", "99887766"), date(2026, 9, 12), 10,
@@ -177,7 +181,8 @@ def build():
         w.writeheader()
         w.writerows(plati)
     (OUT / "contracte.json").write_text(json.dumps(CONTRACTE, ensure_ascii=False, indent=1), "utf-8")
-    print(f"{len(list(facturi_dir.glob('*.xml')))} facturi, {len(plati)} plăți, {len(CONTRACTE)} contracte")
+    print(f"{len(list(facturi_dir.glob('*.xml')))} facturi + {len(list(spv_dir.glob('*.xml')))} în SPV, "
+          f"{len(plati)} plăți, {len(CONTRACTE)} contracte")
 
 
 if __name__ == "__main__":

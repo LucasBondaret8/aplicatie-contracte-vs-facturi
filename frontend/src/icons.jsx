@@ -8,7 +8,9 @@ const I = ({ children, size = 12, vb = 16, title }) => (
 
 export const Plus = () => <I><path d="M8 2.5v11M2.5 8h11" strokeWidth="2.2" /></I>;
 export const Pencil = () => <I><path d="M3 13l1-3.5L11 2.5l2.5 2.5-7 7z" /><path d="M9.5 4l2.5 2.5" /></I>;
-export const Trash = () => <I><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.8 9h6.4l.8-9" /></I>;
+export const Save = () => <I><path d="M2.5 2.5h9l2 2v9h-11z" /><path d="M5 2.5v3.5h5V2.5M5 13.5V9.5h6v4" /></I>;
+export const Cancel = () => <I><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" strokeWidth="2.2" /></I>;
+export const Trash =() => <I><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.8 9h6.4l.8-9" /></I>;
 export const Copy = () => <I><rect x="5" y="5" width="8.5" height="8.5" rx="1" /><path d="M3 10.5V3a.5.5 0 0 1 .5-.5H10" /></I>;
 export const Paste = () => <I><rect x="3" y="3" width="10" height="11" rx="1" /><path d="M6 2h4v2.5H6z" /></I>;
 export const ExportI = () => <I><path d="M2.5 3h7v10h-7z" /><path d="M8 8h6M11.5 5.5L14 8l-2.5 2.5" /></I>;

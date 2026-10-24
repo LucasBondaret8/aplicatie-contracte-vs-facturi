@@ -153,6 +153,25 @@ u { text-decoration: underline; text-underline-offset: 2px; }
 .lockcell { color: var(--text2); display: inline-flex; }
 .verif-cell { display: inline-flex; align-items: center; gap: 5px; }
 
+/* rândul în curs de editare (Adaug / Modific direct în grilă) */
+.grid tbody tr.editing td { background: #fff !important; color: var(--text) !important; border-top: 1px solid var(--brand); border-bottom: 1px solid var(--brand); padding: 0 2px; }
+.grid tbody tr.editing td.rowsel { background: var(--brand) !important; }
+.grid tbody tr.editing td.col-grey { background: var(--grey-col) !important; }
+.grid tbody tr.editing td.col-pink { background: var(--pink-col) !important; }
+.cell-in { width: 100%; height: 20px; border: 1px solid #b9c7da; padding: 0 4px; font: 12px var(--data); background: #fff; }
+.cell-in.r { text-align: right; }
+.cell-in:focus { outline: 0; border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+.cell-in::placeholder { color: #b4b8c0; }
+.tbtn.save { color: var(--brand); font-weight: 600; }
+
+/* facturi sosite din SPV, încă neverificate */
+.tag-new { background: var(--brand); color: #fff; font: 700 9px var(--ui); padding: 1px 5px; border-radius: 2px; letter-spacing: .3px; }
+.grid tbody tr.is-new td:not(.rowsel) { font-weight: 700; }
+.grid tbody tr.is-new td.rowsel { background: var(--brand); }
+.top-item.spv { cursor: pointer; }
+.top-item.spv:hover { color: var(--brand); }
+.top-item.spv.err { color: var(--err); }
+
 /* rândul de filtre de sub grilă */
 .filterrow { display: flex; gap: 2px; align-items: center; padding: 4px 0 2px 60px; }
 .filterrow input { height: 20px; border: 1px solid var(--line); padding: 0 6px; font-size: 11px; background: #fff; }
