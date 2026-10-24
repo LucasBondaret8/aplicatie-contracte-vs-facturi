@@ -107,7 +107,11 @@ export default function App() {
 
   const importInvoices = () => invInput.current.click();
   const importPayments = () => payInput.current.click();
-  const loadDemo = () => run("Date demo", async () => { await api.loadDemo(); open("intrari"); return "Date demo încărcate"; });
+  const loadDemo = () => run("Date demo", async () => {
+    const r = await api.loadDemo();
+    open("intrari");
+    return r.warning ? `Date demo încărcate. Atenție: ${r.warning}` : "Date demo încărcate";
+  });
   const ctx = { data, analysis, cmap, refresh, run, open, setMsg, today, importInvoices, importPayments, syncSpv };
 
   // [eticheta, acțiune | null, scurtătură, submeniu]
@@ -208,8 +212,8 @@ export default function App() {
           <span className="grow" />
           {spv && (
             <button className={`top-item spv${spv.last_error ? " err" : ""}`} onClick={syncSpv}
-              title={`${spv.mode === "anaf" ? "Conectat la ANAF e-Factura" : "SPV simulat (demo)"} · sincronizare automată la ${spv.every_minutes} min · click = sincronizează acum${spv.last_error ? `\nEroare: ${spv.last_error}` : ""}`}>
-              <Sync /> SPV{spv.mode === "simulat" ? " (demo)" : ""}: {spv.last_sync ? `sincronizat ${spv.last_sync.slice(11, 16)}` : "nesincronizat"}
+              title={`${{ anaf: "Conectat la ANAF e-Factura", supabase: "Facturi și contracte din Supabase (în locul SPV)" }[spv.mode] || "SPV simulat (demo)"} · sincronizare automată la ${spv.every_minutes} min · click = sincronizează acum${spv.last_error ? `\nEroare: ${spv.last_error}` : ""}`}>
+              <Sync /> SPV{{ simulat: " (demo)", supabase: " (Supabase)" }[spv.mode] || ""}: {spv.last_sync ? `sincronizat ${spv.last_sync.slice(11, 16)}` : "nesincronizat"}
               {spv.new_invoices > 0 && <span className="tag-new">{spv.new_invoices} NOI</span>}
             </button>
           )}

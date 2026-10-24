@@ -18,7 +18,7 @@ from generate_demo import build  # noqa: E402
 def client(tmp_path, monkeypatch):
     build()
     monkeypatch.setenv("BVS_TODAY", "2026-10-24")
-    for k in ("ANAF_CLIENT_ID", "ANAF_CLIENT_SECRET", "ANAF_REDIRECT_URI"):
+    for k in ("ANAF_CLIENT_ID", "ANAF_CLIENT_SECRET", "ANAF_REDIRECT_URI", "SUPABASE_URL", "SUPABASE_KEY"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(main, "store", Store(tmp_path / "store.json"))
     c = TestClient(main.app)

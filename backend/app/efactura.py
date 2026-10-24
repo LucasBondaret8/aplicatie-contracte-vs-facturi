@@ -70,6 +70,14 @@ def parse_invoice_xml(data: bytes, filename: str = "") -> dict:
             "vat_pct": _num(ln, "cac:Item/cac:ClassifiedTaxCategory/cbc:Percent"),
         })
 
+    # reduceri / taxe la nivel de document (ex. discount contractual), cu cota lor de TVA
+    allowances = [{
+        "charge": _text(ac, "cbc:ChargeIndicator").lower() == "true",
+        "reason": _text(ac, "cbc:AllowanceChargeReason"),
+        "amount": _num(ac, "cbc:Amount"),
+        "vat_pct": _num(ac, "cac:TaxCategory/cbc:Percent"),
+    } for ac in root.findall("cac:AllowanceCharge", NS)]
+
     supplier = _party(root, "AccountingSupplierParty")
     customer = _party(root, "AccountingCustomerParty")
     issue_date = _text(root, "cbc:IssueDate")
@@ -85,6 +93,7 @@ def parse_invoice_xml(data: bytes, filename: str = "") -> dict:
         "customer_name": customer["name"],
         "customer_cui": customer["cui"],
         "lines": lines,
+        "allowances": allowances,
         "total_without_vat": _num(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount"),
         "vat_total": _num(root, "cac:TaxTotal/cbc:TaxAmount"),
         "total_with_vat": _num(root, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount"),

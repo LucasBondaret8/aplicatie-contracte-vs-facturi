@@ -31,6 +31,7 @@ Pentru extragerea contractelor cu Claude setează `ANTHROPIC_API_KEY` înainte d
 ## De unde vin facturile
 
 1. **Automat din SPV (RO e-Factura).** Serverul verifică singur SPV-ul la fiecare `BVS_SYNC_MINUTES` minute (implicit 60), descarcă facturile primite noi și le verifică pe loc față de contracte. Ele apar în Intrări marcate **NOU**, iar sus scrie „SPV: sincronizat 14:05 · 3 NOI” (click = sincronizează acum). **Validez** scoate factura din lista celor noi.
+   - **Supabase:** cu `SUPABASE_URL` și `SUPABASE_KEY` în `backend/.env`, bucket-ul `facturi` ține locul SPV-ului, iar contractele PDF din bucket-ul `contracte` sunt citite automat. Vezi `demo_supabase/README.md`.
    - **Demo (fără ANAF):** sursa e un SPV simulat, folderul `demo/spv/`. După „Date demo”, facturile din octombrie sosesc la prima sincronizare (pornește backend-ul cu `BVS_SYNC_MINUTES=2` ca să se vadă la demo).
    - **Real:** înregistrează aplicația la ANAF (Servicii Online → Înregistrare utilizatori → Dezvoltatori aplicații, cu certificat digital calificat) și pornește backend-ul cu `ANAF_CLIENT_ID`, `ANAF_CLIENT_SECRET`, `ANAF_REDIRECT_URI` (https, terminată în `/api/anaf/callback`), `ANAF_CIF` și `ANAF_ENV=test|prod`. Apoi deschide `/api/anaf/connect` și autentifică-te o dată cu certificatul. Conectorul (`backend/app/anaf.py`) **nu a fost încă testat pe un cont ANAF real**.
 2. **De mână, direct în grilă.** Adaug (ALT+A) în Intrări deschide un rând nou editabil: Nr. doc., furnizor (din listă sau scris nou), data, scadența. Când alegi un furnizor cu contract, scadența și linia (denumire, UM, cantitate, preț, TVA) se completează din contract, iar „Preț contract / Diferență” se văd cât scrii. Liniile: Adaug (ALT+D) / Șterg (ALT+T) în grila de jos. **Salvez** (ALT+S) verifică factura față de contract, **Renunț** (ALT+R) anulează. Pentru furnizori externi, chitanțe sau facturi urgente. Dacă aceeași factură (furnizor + număr) sosește apoi din SPV, o înlocuiește pe cea manuală.
@@ -67,8 +68,9 @@ Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contab
 
 | Cod | Ce verifică |
 |---|---|
-| PRICE | preț unitar peste contract (cu indexare IPC plafonată) |
+| PRICE | preț unitar peste contract (cu indexare IPC plafonată și discountul contractual, după reducerile de pe factură) |
 | QUANTITY | cantitate peste cea contractată |
+| NEW_LINE | linie care apare pentru prima dată pe facturile unui contract (serviciu neprevăzut) |
 | VAT_RATE / VAT_CALC / TOTAL_CALC | cotă TVA greșită, TVA sau total calculate greșit |
 | DUE_DATE | termen de plată mai scurt decât în contract |
 | OUT_OF_CONTRACT | perioadă facturată în afara valabilității |

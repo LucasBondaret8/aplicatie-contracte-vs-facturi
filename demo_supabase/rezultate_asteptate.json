@@ -1,0 +1,316 @@
+[
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2025-10.xml",
+    "nr_factura": "TN-202510-001",
+    "luna": "2025-10",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2025-11.xml",
+    "nr_factura": "TN-202511-002",
+    "luna": "2025-11",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2025-12.xml",
+    "nr_factura": "TN-202512-003",
+    "luna": "2025-12",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-01.xml",
+    "nr_factura": "TN-202601-004",
+    "luna": "2026-01",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-02.xml",
+    "nr_factura": "TN-202602-005",
+    "luna": "2026-02",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-03.xml",
+    "nr_factura": "TN-202603-006",
+    "luna": "2026-03",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-04.xml",
+    "nr_factura": "TN-202604-007",
+    "luna": "2026-04",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-05.xml",
+    "nr_factura": "TN-202605-008",
+    "luna": "2026-05",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-06.xml",
+    "nr_factura": "TN-202606-009",
+    "luna": "2026-06",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-07.xml",
+    "nr_factura": "TN-202607-010",
+    "luna": "2026-07",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-08.xml",
+    "nr_factura": "TN-202608-011",
+    "luna": "2026-08",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "TelcoNet Mobile SRL",
+    "fisier": "facturi/telconet/2026-09.xml",
+    "nr_factura": "TN-202609-012",
+    "luna": "2026-09",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 22,40 > maxim 21,12 dupa indexare (Art. 5)"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2025-10.xml",
+    "nr_factura": "CP-202510-001",
+    "luna": "2025-10",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2025-11.xml",
+    "nr_factura": "CP-202511-002",
+    "luna": "2025-11",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2025-12.xml",
+    "nr_factura": "CP-202512-003",
+    "luna": "2025-12",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-01.xml",
+    "nr_factura": "CP-202601-004",
+    "luna": "2026-01",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-02.xml",
+    "nr_factura": "CP-202602-005",
+    "luna": "2026-02",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-03.xml",
+    "nr_factura": "CP-202603-006",
+    "luna": "2026-03",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-04.xml",
+    "nr_factura": "CP-202604-007",
+    "luna": "2026-04",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-05.xml",
+    "nr_factura": "CP-202605-008",
+    "luna": "2026-05",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-06.xml",
+    "nr_factura": "CP-202606-009",
+    "luna": "2026-06",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "pret 1.600 > 1.450, pret fix (Art. 4)"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-07.xml",
+    "nr_factura": "CP-202607-010",
+    "luna": "2026-07",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-08.xml",
+    "nr_factura": "CP-202608-011",
+    "luna": "2026-08",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "CleanPro Services SRL",
+    "fisier": "facturi/cleanpro/2026-09.xml",
+    "nr_factura": "CP-202609-012",
+    "luna": "2026-09",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2025-10.xml",
+    "nr_factura": "SN-202510-001",
+    "luna": "2025-10",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2025-11.xml",
+    "nr_factura": "SN-202511-002",
+    "luna": "2025-11",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2025-12.xml",
+    "nr_factura": "SN-202512-003",
+    "luna": "2025-12",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-01.xml",
+    "nr_factura": "SN-202601-004",
+    "luna": "2026-01",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "lipseste discountul de 10% valabil pana la 31.03.2026 (Art. 5)"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-02.xml",
+    "nr_factura": "SN-202602-005",
+    "luna": "2026-02",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "lipseste discountul de 10% valabil pana la 31.03.2026 (Art. 5)"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-03.xml",
+    "nr_factura": "SN-202603-006",
+    "luna": "2026-03",
+    "alerte_asteptate": [
+      "PRICE"
+    ],
+    "explicatie": "lipseste discountul de 10% valabil pana la 31.03.2026 (Art. 5)"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-04.xml",
+    "nr_factura": "SN-202604-007",
+    "luna": "2026-04",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-05.xml",
+    "nr_factura": "SN-202605-008",
+    "luna": "2026-05",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-06.xml",
+    "nr_factura": "SN-202606-009",
+    "luna": "2026-06",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-07.xml",
+    "nr_factura": "SN-202607-010",
+    "luna": "2026-07",
+    "alerte_asteptate": [],
+    "explicatie": "corecta"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-08.xml",
+    "nr_factura": "SN-202608-011",
+    "luna": "2026-08",
+    "alerte_asteptate": [
+      "NEW_LINE"
+    ],
+    "explicatie": "linie noua 'Suport premium' care nu apare in contract (Art. 4)"
+  },
+  {
+    "furnizor": "SoftNet Solutions SRL",
+    "fisier": "facturi/softnet/2026-09.xml",
+    "nr_factura": "SN-202609-012",
+    "luna": "2026-09",
+    "alerte_asteptate": [
+      "QUANTITY"
+    ],
+    "explicatie": "23 licente facturate > 20 contractate, fara act aditional (Art. 6)"
+  }
+]

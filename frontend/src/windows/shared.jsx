@@ -143,6 +143,8 @@ const CONTRACT_FIELDS = [
   ["indexation_type", "Indexare", ["none", "IPC", "fix"]],
   ["indexation_max_pct", "Plafon indexare %", "number"],
   ["indexation_month", "Luna indexării", "number"],
+  ["discount_pct", "Discount %", "number"],
+  ["discount_until", "Discount până la", "date"],
   ["expense_account", "Cont debit", "text"],
   ["start_date", "Valabil de la", "date"],
   ["end_date", "Valabil până la", "date"],

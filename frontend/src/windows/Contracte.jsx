@@ -36,6 +36,7 @@ export default function Contracte({ ctx, params, onClose }) {
     { key: "pen", label: "Penalizări %", w: 80, align: "r", render: (c) => (c.late_penalty_pct_per_day ? `${c.late_penalty_pct_per_day}/zi` : "") },
     { key: "payment_term_days", label: "Zile scadență", w: 84, align: "r" },
     { key: "idx", label: "Indexare", w: 90, render: (c) => (c.indexation_type === "none" ? "" : `${c.indexation_type} max ${c.indexation_max_pct}%`) },
+    { key: "discount", label: "Discount", w: 120, render: (c) => (c.discount_pct ? `${c.discount_pct}%${c.discount_until ? ` până la ${dmy(c.discount_until)}` : ""}` : "") },
     { key: "expense_account", label: "Cont debit", w: 70 },
   ];
   const lunarCols = [

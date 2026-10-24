@@ -40,6 +40,8 @@ CONTRACT_SCHEMA = {
         "indexation_type": {"type": "string", "enum": ["none", "IPC", "fix"]},
         "indexation_max_pct": {"type": ["number", "null"], "description": "Plafonul anual al indexării, %"},
         "indexation_month": {"type": ["integer", "null"], "description": "Luna în care se aplică indexarea (1-12)"},
+        "discount_pct": {"type": ["number", "null"], "description": "Discount contractual % din preț; null dacă nu există"},
+        "discount_until": {"type": ["string", "null"], "description": "Ultima zi a discountului, YYYY-MM-DD; null dacă e permanent sau lipsește"},
         "start_date": {"type": "string", "description": "YYYY-MM-DD"},
         "end_date": {"type": ["string", "null"], "description": "YYYY-MM-DD sau null dacă e pe perioadă nedeterminată"},
         "notes": {"type": "string", "description": "Alte clauze relevante pentru facturare, 1-2 propoziții"},
@@ -50,7 +52,7 @@ CONTRACT_SCHEMA = {
     "required": ["title", "contract_number", "supplier_name", "supplier_cui", "service_keywords", "currency",
                  "unit_price", "unit", "quantity_per_period", "vat_rate", "billing_period", "payment_term_days",
                  "late_penalty_pct_per_day", "indexation_type", "indexation_max_pct", "indexation_month",
-                 "start_date", "end_date", "notes", "expense_account"],
+                 "discount_pct", "discount_until", "start_date", "end_date", "notes", "expense_account"],
     "additionalProperties": False,
 }
 
@@ -138,7 +140,11 @@ def extract_heuristic(text: str) -> dict:
     term = _find(r"(\d{1,3})\s*(?:de\s*)?zile\s*(?:calendaristice\s*)?(?:de la|de la data)\s*(?:emiter|primir)", text)
     pen = _find(r"penalit[aă][tț]i\s*de\s*(\d+[.,]?\d*)\s*%\s*(?:pe|/)\s*zi", text)
     idx = _find(r"index\w*.*?(?:maxim\w*|plafon\w*)\s*(?:de\s*)?(\d+[.,]?\d*)\s*%", text)
-    qty = _find(r"(\d+)\s*interven[tț]ii\s*(?:pe|/)\s*lun[aă]", text)
+    qty = _find(r"(\d+)\s*interven[tț]ii\s*(?:pe|/)\s*lun[aă]", text) or \
+        _find(r"(\d+)\s*(?:\([^)]*\)\s*)?(?:linii|licen[tț]e)\b", text)
+    discount = re.search(r"discount\w*\s*(?:de\s*)?(\d+[.,]?\d*)\s*%(.{0,200})", text, re.I | re.S)
+    discount_until = _date_ro(re.findall(r"\d{1,2}\.\d{1,2}\.\d{4}", discount.group(2))[-1]) \
+        if discount and re.search(r"\d{1,2}\.\d{1,2}\.\d{4}", discount.group(2)) else None
     start = _date_ro(_find(r"(?:începând cu|incepand cu|de la data de|intră în vigoare la)\s*([\d./-]{8,10})", text))
     end = _date_ro(_find(r"(?:până la|pana la|până la data de)\s*([\d./-]{8,10})", text))
     vat = _find(r"TVA\s*(?:de\s*)?(\d{1,2})\s*%", text)
@@ -162,6 +168,8 @@ def extract_heuristic(text: str) -> dict:
         "indexation_type": "IPC" if re.search(r"\bIPC\b|indice\w* pre[tț]urilor", text, re.I) else "none",
         "indexation_max_pct": _num_ro(idx) if idx else None,
         "indexation_month": 1 if idx else None,
+        "discount_pct": _num_ro(discount.group(1)) if discount else None,
+        "discount_until": discount_until,
         "start_date": start or "",
         "end_date": end,
         "notes": "Extras automat fără AI – verifică toate câmpurile.",
