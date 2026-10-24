@@ -1,6 +1,6 @@
 # Bill vs Signed
 
-Verifică automat facturile recurente primite prin **RO e-Factura** față de **contractul semnat**: preț, indexare, cantitate, TVA, termen de plată, penalități, perioada contractului, dubluri, facturi lipsă, restanțe și plăți în plus. Interfața imită o aplicație contabilă desktop (în stilul SAGA), ca un contabil să lucreze fără să învețe ceva nou.
+Răspunde la întrebarea din challenge: **furnizorul a livrat și a facturat ce s-a semnat, lună de lună?** Pune cap la cap contractul (ce s-a promis), facturile din **RO e-Factura** și plățile (ce s-a cerut și ce s-a plătit) și confirmările de livrare (ce s-a primit efectiv). Verifică prețul, indexarea, reducerile, cantitatea, TVA-ul, termenul de plată, penalitățile, perioada contractului cu reînnoirile automate, dublurile, facturile lipsă, ce s-a livrat, licențele folosite, restanțele și plățile în plus. Interfața imită programul de contabilitate (stil SAGA), ca un contabil să lucreze fără să învețe ceva nou.
 
 ## Pornire
 
@@ -52,7 +52,8 @@ Scurtături:
 | Situație furnizori | perioadă (de la / până la / lună / an) și tab-urile Situație generală, Facturi - furnizor (cu plățile fiecărei facturi), Scadențar (și pe intervale, ALT+S) |
 | Jurnal de bancă / Registru de casă | zilele cu sold inițial, încasări, plăți, sold final; operațiile zilei (401.xxxxx / 5121 sau 5311, „Achit. FURNIZOR nr.: X”) |
 | Plată | dialogul Data, Cont plată, Reține ca implicit, Suma plătită, Nr. doc plată; Accept (ALT+A) / Renunț (ALT+R) |
-| Contracte furnizori | fișele contractelor (completate de AI din PDF) și facturile lunare pe fiecare contract, inclusiv lunile lipsă |
+| Contracte furnizori | fișa contractului (completată din PDF, în română sau engleză: preț, indexare, reducere, reînnoire automată și preaviz, licențe); pe fiecare contract: facturile lunare cu ce s-a livrat, **istoricul prețului** (grafic facturat vs. contract) și livrările confirmate; alertele de reînnoire / expirare |
+| Confirmare livrări | pentru o lună, ce s-a primit efectiv pe fiecare contract (livrat / parțial / nelivrat, cantitate sau licențe folosite, document); ALT+L / ALT+P / ALT+N; factura se reverifică pe loc |
 | Verificare | toate neconcordanțele, cu suma de recuperat |
 
 Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contabile, Declarații, Salarii...) apar dezactivate: ele rămân în programul de contabilitate al clientului. Interfața imită stilul general, nu copiază numele, logo-ul sau iconițele altui produs.
@@ -65,21 +66,24 @@ Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contab
 4. **Reguli** (`backend/app/rules.py`): deterministe, fără AI, fiecare alertă cu suma de recuperat.
 5. **Rezultat**: dashboard, comparație factură ↔ contract, email de contestație, raport CSV pentru Excel.
 
-| Cod | Ce verifică |
-|---|---|
-| PRICE | preț unitar peste contract (cu indexare IPC plafonată) |
-| QUANTITY | cantitate peste cea contractată |
-| VAT_RATE / VAT_CALC / TOTAL_CALC | cotă TVA greșită, TVA sau total calculate greșit |
-| DUE_DATE | termen de plată mai scurt decât în contract |
-| OUT_OF_CONTRACT | perioadă facturată în afara valabilității |
-| PENALTY | penalități pe care contractul nu le prevede |
-| DUPLICATE / MISSING | aceeași lună facturată de două ori / lună nefacturată |
-| OVERDUE / OVERPAID | restanță (cu risc de penalități) / plată în plus |
-| NO_CONTRACT | furnizor fără contract |
+| Cod | Ce verifică | Ce spune challenge-ul |
+|---|---|---|
+| PRICE | preț unitar peste contract (cu indexare IPC plafonată) | „prices go up by indexation” |
+| DISCOUNT_MISSING | reducerea din contract nu mai apare pe factură | „a discount quietly disappears” |
+| OUT_OF_CONTRACT / RENEWAL_NOTICE / RENEWAL_LOCKED / EXPIRING | factură după expirare (ținând cont de reînnoirea automată); termen de denunțare apropiat sau trecut; contract care expiră | „contracts renew automatically” |
+| NOT_DELIVERED / UNDER_DELIVERED / PARTIAL_DELIVERY | facturat dar nelivrat; facturat mai mult decât s-a primit (din confirmările de livrare) | „a service stops being delivered”, „delivery evidence” |
+| UNUSED_LICENSES | licențe plătite față de licențe folosite (economie posibilă, separată de sumele de recuperat) | licențele SaaS nefolosite |
+| QUANTITY | cantitate peste cea contractată | |
+| VAT_RATE / VAT_CALC / TOTAL_CALC | cotă TVA greșită, TVA sau total calculate greșit | |
+| DUE_DATE | termen de plată mai scurt decât în contract | |
+| PENALTY | penalități pe care contractul nu le prevede | |
+| DUPLICATE / MISSING | aceeași lună facturată de două ori / lună nefacturată | |
+| OVERDUE / OVERPAID | restanță (cu risc de penalități) / plată în plus | |
+| NO_CONTRACT | furnizor fără contract | |
 
 ## Date demo
 
-`python demo/generate_demo.py` regenerează 3 contracte, 28 de facturi deja preluate + 3 care sosesc din SPV-ul simulat și plățile. Erorile intenționate sunt în `ERORI_INTENTIONATE`, iar testele verifică exact acele alerte:
+`python demo/generate_demo.py` regenerează 5 contracte (chirie, IT, curățenie, telefonie cu reducere, licențe CRM cu contract în engleză și reînnoire automată), 45 de facturi deja preluate + 5 care sosesc din SPV-ul simulat, plățile și confirmările de livrare. Erorile intenționate sunt în `ERORI_INTENTIONATE`, iar testele verifică exact acele alerte:
 
 ```bash
 python -m pytest backend/tests

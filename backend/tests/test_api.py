@@ -33,7 +33,7 @@ def by_number(client, number):
 def test_spv_sync_brings_new_invoices_once(client):
     assert by_number(client, "IMN-2026-10") is None
     st = client.post("/api/spv/sync").json()
-    assert st["mode"] == "simulat" and st["last_new"] == 3 and st["new_invoices"] == 3
+    assert st["mode"] == "simulat" and st["last_new"] == 5 and st["new_invoices"] == 5
     r = by_number(client, "CLO-2026-10")
     assert r["invoice"]["new"] and r["invoice"]["source"] == "spv"
     assert {a["code"] for a in r["alerts"]} == {"OUT_OF_CONTRACT"}
@@ -44,7 +44,7 @@ def test_validate_clears_new(client):
     client.post("/api/spv/sync")
     iid = by_number(client, "IMN-2026-10")["invoice"]["id"]
     client.post(f"/api/invoices/{iid}/validated", json={"value": True})
-    assert client.get("/api/spv/status").json()["new_invoices"] == 2
+    assert client.get("/api/spv/status").json()["new_invoices"] == 4
 
 
 def test_manual_invoice_is_checked_against_contract(client):
@@ -76,9 +76,9 @@ def test_spv_invoice_cannot_be_edited_manually(client):
 
 def test_suppliers(client):
     sup = client.get("/api/state").json()["suppliers"]
-    assert {s["cod"] for s in sup} == {"00001", "00002", "00003", "00004"}
+    assert {s["cod"] for s in sup} == {"00001", "00002", "00003", "00004", "00005", "00006"}
     new = client.post("/api/suppliers", json={"name": "Google Ireland Ltd", "cui": "IE6388047V", "tara": "IE"}).json()
-    assert new["cod"] == "00005"
+    assert new["cod"] == "00007"
     assert client.post("/api/suppliers", json={"name": "Alt nume", "cui": "IE6388047V"}).status_code == 400
     used = next(s for s in sup if s["cui"] == "31415926")
     assert client.delete(f"/api/suppliers/{used['id']}").status_code == 400
@@ -86,7 +86,7 @@ def test_suppliers(client):
     # un furnizor nou, apărut doar pe o factură manuală, primește automat fișă și cod
     client.post("/api/invoices/manual", json={"number": "77", "supplier_cui": "11223344", "supplier_name": "Nou SRL",
                                                "issue_date": "2026-10-20", "lines": [{"description": "x", "quantity": 1, "unit_price": 10, "vat_pct": 21}]})
-    assert any(s["cui"] == "11223344" and s["cod"] == "00005" for s in client.get("/api/state").json()["suppliers"])
+    assert any(s["cui"] == "11223344" and s["cod"] == "00007" for s in client.get("/api/state").json()["suppliers"])
 
 
 def test_payment_validation_and_import_adds(client, tmp_path):
@@ -108,6 +108,24 @@ def test_contract_needs_supplier_and_price(client):
     ok = {"title": "Telefonie", "supplier_name": "Telecom SRL", "supplier_cui": "RO55667788", "unit_price": 450, "start_date": "2026-02-01"}
     assert client.post("/api/contracts", json={**ok, "end_date": "2025-01-01"}).status_code == 400
     assert client.post("/api/contracts", json=ok).json()["supplier_cui"] == "55667788"
+
+
+def test_delivery_confirmation_changes_verification(client):
+    assert {a["code"] for a in by_number(client, "TEL-2026-05")["alerts"]} == set()
+    r = client.post("/api/deliveries", json={"contract_id": "c-telecom", "period": "2026-05", "status": "partial", "quantity": 7,
+                                             "doc": "Raport operator", "note": "3 SIM-uri inactive"})
+    assert r.status_code == 200
+    a = by_number(client, "TEL-2026-05")["alerts"]
+    assert [x["code"] for x in a] == ["UNDER_DELIVERED"] and a[0]["amount"] == pytest.approx(3 * 40.5 * 1.21, abs=0.01)
+    # aceeași lună: confirmarea se înlocuiește, nu se dublează
+    client.post("/api/deliveries", json={"contract_id": "c-telecom", "period": "2026-05", "status": "livrat", "quantity": 10})
+    assert by_number(client, "TEL-2026-05")["alerts"] == []
+    assert sum(d["period"] == "2026-05" and d["contract_id"] == "c-telecom" for d in client.get("/api/state").json()["deliveries"]) == 1
+    for bad in ({"contract_id": "nu-exista", "period": "2026-05", "status": "livrat"},
+                {"contract_id": "c-telecom", "period": "05.2026", "status": "livrat"},
+                {"contract_id": "c-telecom", "period": "2026-05", "status": "poate"},
+                {"contract_id": "c-telecom", "period": "2026-05", "status": "livrat", "quantity": -1}):
+        assert client.post("/api/deliveries", json=bad).status_code == 400
 
 
 def test_manual_invoice_requires_lines(client):

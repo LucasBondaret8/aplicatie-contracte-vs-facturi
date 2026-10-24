@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "store.json"
-EMPTY = {"contracts": [], "invoices": [], "payments": [], "suppliers": [], "opening": {"banca": 0, "casa": 0}}
+EMPTY = {"contracts": [], "invoices": [], "payments": [], "suppliers": [], "deliveries": [], "opening": {"banca": 0, "casa": 0}}
 
 
 class Store:
@@ -46,6 +46,20 @@ class Store:
             self.data["suppliers"] = [x for x in self.data["suppliers"] if x["id"] != s["id"]] + [s]
             self.save()
             return s
+
+    # confirmări de livrare: una pe (contract, lună)
+    def upsert_delivery(self, d: dict) -> dict:
+        with self.lock:
+            old = next((x for x in self.data["deliveries"] if x["contract_id"] == d["contract_id"] and x["period"] == d["period"]), None)
+            d["id"] = old["id"] if old else uuid.uuid4().hex[:8]
+            self.data["deliveries"] = [x for x in self.data["deliveries"] if x["id"] != d["id"]] + [d]
+            self.save()
+            return d
+
+    def delete_delivery(self, did: str):
+        with self.lock:
+            self.data["deliveries"] = [x for x in self.data["deliveries"] if x["id"] != did]
+            self.save()
 
     def delete_supplier(self, sid: str):
         with self.lock:

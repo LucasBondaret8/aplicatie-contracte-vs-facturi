@@ -3,6 +3,46 @@ import { api, daysBetween, dmy, lei } from "../api.js";
 import { DialogButtons, Field, Modal } from "../ui.jsx";
 
 export const STATUS_LABEL = { ok: "Corect", warning: "Atenție", error: "Eroare" };
+export const DELIVERY_LABEL = { livrat: "Livrat", partial: "Parțial", nelivrat: "Nelivrat" };
+/** Neconcordanțe care țin de furnizor și se pot contesta (nu restanțele noastre sau licențele nefolosite). */
+export const DISPUTABLE = (a) => !["OVERDUE", "OVERPAID", "NO_CONTRACT", "UNUSED_LICENSES", "MISSING"].includes(a.code);
+
+/** Confirmarea de livrare / recepție pentru un contract și o lună (o completează office managerul). */
+export function DeliveryModal({ ctx, contract, period, onClose }) {
+  const existing = (ctx.data.deliveries || []).find((x) => x.contract_id === contract.id && x.period === period);
+  const [d, setD] = useState(existing || { status: "livrat", quantity: contract.quantity_per_period ?? "", doc: "", note: "", period });
+  const set = (k) => (e) => setD((x) => ({ ...x, [k]: e.target.value }));
+  const save = async () => {
+    if (await ctx.run("Confirmare livrare", async () => {
+      await api.saveDelivery({ ...d, contract_id: contract.id });
+      return `Livrarea pentru ${d.period} (${contract.supplier_name}) a fost confirmată – facturile au fost reverificate`;
+    })) onClose();
+  };
+  const del = async () => existing && confirm("Ștergi confirmarea?") && (await ctx.run("Ștergere confirmare", () => api.deleteDelivery(existing.id))) && onClose();
+  return (
+    <Modal title="Confirmare livrare" onClose={onClose} width={330}
+      footer={<DialogButtons onAccept={save} onCancel={onClose}
+        extra={existing && <button className="dbtn" onClick={del}>Șterg</button>} />}>
+      <div className="vform">
+        <div className="muted">{contract.title} · {contract.supplier_name}</div>
+        <Field label="Luna"><input type="month" value={d.period} onChange={set("period")} disabled={!!existing} /></Field>
+        <Field label="Stare">
+          <select value={d.status} onChange={set("status")}>
+            <option value="livrat">Livrat integral</option>
+            <option value="partial">Livrat parțial</option>
+            <option value="nelivrat">Nelivrat</option>
+          </select>
+        </Field>
+        <Field label={contract.is_licenses ? "Licențe folosite efectiv" : `Cantitate primită (${contract.unit || "buc"})`}>
+          <input type="number" step="any" className="r" value={d.quantity ?? ""} onChange={set("quantity")}
+            placeholder={contract.quantity_per_period ? `din ${contract.quantity_per_period} în contract` : ""} />
+        </Field>
+        <Field label="Document (PV recepție, pontaj, raport)"><input value={d.doc || ""} onChange={set("doc")} /></Field>
+        <Field label="Observații"><input value={d.note || ""} onChange={set("note")} /></Field>
+      </div>
+    </Modal>
+  );
+}
 
 /** Furnizorii (fișele din Furnizori), cu rulaje calculate din facturi și plăți. */
 export function partners(ctx) {
@@ -38,9 +78,14 @@ export function CompareDetail({ r, contract, compact }) {
   const main = inv.lines.find((l) => !/penalit/i.test(l.description)) || inv.lines[0] || {};
   const codes = new Set(r.alerts.map((a) => a.code));
   const term = inv.issue_date && inv.due_date ? daysBetween(inv.issue_date, inv.due_date) : null;
+  const d = r.delivery;
   const rows = contract ? [
-    ["Preț unitar", lei(main.unit_price), `${lei(r.allowed_price)}${contract.indexation_type !== "none" ? " (indexat)" : ""}`, codes.has("PRICE")],
+    ["Preț unitar", lei(main.unit_price), `${lei(r.allowed_price)}${contract.indexation_type !== "none" ? " (indexat)" : ""}${r.discount_pct ? ` (cu ${r.discount_pct}% reducere)` : ""}`,
+      codes.has("PRICE") || codes.has("DISCOUNT_MISSING")],
     ["Cantitate", main.quantity, contract.quantity_per_period ?? "—", codes.has("QUANTITY")],
+    ["Livrat / folosit", d ? `${DELIVERY_LABEL[d.status]}${d.quantity != null ? ` · ${d.quantity}` : ""}` : "neconfirmat",
+      d?.doc || (contract.is_licenses ? "licențe folosite" : "confirmare livrare"),
+      codes.has("NOT_DELIVERED") || codes.has("UNDER_DELIVERED") || codes.has("UNUSED_LICENSES")],
     ["Cotă TVA", `${main.vat_pct}%`, `${contract.vat_rate}%`, codes.has("VAT_RATE")],
     ["Termen plată", `${term} zile`, `${contract.payment_term_days} zile`, codes.has("DUE_DATE")],
     ["Perioadă", `${dmy(inv.period_start)}–${dmy(inv.period_end)}`, `${dmy(contract.start_date)}–${contract.end_date ? dmy(contract.end_date) : "nedet."}`, codes.has("OUT_OF_CONTRACT")],
@@ -146,6 +191,12 @@ const CONTRACT_FIELDS = [
   ["expense_account", "Cont debit", "text"],
   ["start_date", "Valabil de la", "date"],
   ["end_date", "Valabil până la", "date"],
+  ["auto_renew", "Reînnoire automată", "bool"],
+  ["renewal_months", "Reînnoire cu (luni)", "number"],
+  ["notice_days", "Preaviz denunțare (zile)", "number"],
+  ["discount_pct", "Reducere %", "number"],
+  ["discount_until", "Reducere valabilă până la", "date"],
+  ["is_licenses", "Facturare pe licențe", "bool"],
   ["service_keywords", "Cuvinte pe factură", "list", true],
   ["notes", "Observații", "text", true],
 ];
@@ -197,7 +248,11 @@ export function ContractModal({ ctx, initial, onClose }) {
         <div className="form">
           {CONTRACT_FIELDS.map(([k, label, type, wide]) => (
             <Field key={k} label={label} wide={wide}>
-              {Array.isArray(type) ? (
+              {type === "bool" ? (
+                <select value={fields[k] ? "da" : "nu"} onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value === "da" }))}>
+                  <option value="nu">Nu</option><option value="da">Da</option>
+                </select>
+              ) : Array.isArray(type) ? (
                 <select value={fields[k] ?? type[0]} onChange={(e) => set(k, "text", e.target.value)}>
                   {type.map((o) => <option key={o}>{o}</option>)}
                 </select>

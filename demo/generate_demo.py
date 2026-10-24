@@ -1,4 +1,4 @@
-"""Generează datele demo: 3 contracte, ~30 facturi e-Factura (UBL) cu erori intenționate și plăți.
+"""Generează datele demo: 5 contracte, facturi e-Factura (UBL) cu erori intenționate, plăți și confirmări de livrare.
 
 Rulare: python demo/generate_demo.py
 Erorile intenționate sunt listate în ERORI_INTENTIONATE (folosite și de teste).
@@ -42,7 +42,32 @@ CONTRACTE = [
         "indexation_max_pct": None, "indexation_month": None, "start_date": "2025-09-01", "end_date": "2026-08-31",
         "notes": "8 intervenții pe lună.", "expense_account": "628", "source_file": "contract_curatenie.txt",
     },
+    {
+        "id": "c-telecom", "title": "Telefonie mobilă și internet – 10 abonamente", "contract_number": "TEL-22/2026",
+        "supplier_name": "Telecom Rapid SRL", "supplier_cui": "55667788",
+        "service_keywords": ["abonament", "mobil", "internet"], "currency": "RON", "unit_price": 45.0,
+        "unit": "abonament", "quantity_per_period": 10, "vat_rate": 21.0, "billing_period": "lunar",
+        "payment_term_days": 20, "late_penalty_pct_per_day": 0.02, "indexation_type": "none",
+        "indexation_max_pct": None, "indexation_month": None, "start_date": "2026-02-01", "end_date": "2028-01-31",
+        "discount_pct": 10.0, "discount_until": "2027-01-31",
+        "notes": "10% reducere în primele 12 luni.", "expense_account": "626", "source_file": "contract_telefonie.txt",
+    },
+    {
+        "id": "c-crm", "title": "CRM cloud – 25 licențe utilizatori", "contract_number": "SaaS-2025-31",
+        "supplier_name": "CloudSoft SRL", "supplier_cui": "44556677",
+        "service_keywords": ["licențe", "crm"], "currency": "RON", "unit_price": 45.0,
+        "unit": "licență", "quantity_per_period": 25, "vat_rate": 21.0, "billing_period": "lunar",
+        "payment_term_days": 15, "late_penalty_pct_per_day": None, "indexation_type": "none",
+        "indexation_max_pct": None, "indexation_month": None, "start_date": "2025-12-01", "end_date": "2026-11-30",
+        "auto_renew": True, "renewal_months": 12, "notice_days": 30, "is_licenses": True,
+        "notes": "Contract în engleză; se reînnoiește automat cu 12 luni, preaviz 30 de zile.", "expense_account": "628",
+        "source_file": "contract_licente_crm_en.txt",
+    },
 ]
+for _c in CONTRACTE:  # câmpurile noi ale fișei, cu valorile implicite
+    for _k, _v in {"auto_renew": False, "renewal_months": None, "notice_days": None, "discount_pct": None,
+                   "discount_until": None, "is_licenses": False}.items():
+        _c.setdefault(_k, _v)
 
 # fișele furnizorilor (date inventate)
 FURNIZORI = [
@@ -54,12 +79,18 @@ FURNIZORI = [
      "localitate": "CLUJ-NAPOCA", "adresa": "Bd. Muncii nr. 40", "iban": "", "banca": ""},
     {"id": "f-techsupport", "cod": "00004", "name": "TechSupport Pro SRL", "cui": "27182818", "tara": "RO", "judet": "B",
      "localitate": "BUCURESTI", "adresa": "Bd. Tehnologiei nr. 7", "iban": "RO09CCCC0000000987654321", "banca": "BANCA DEMO"},
+    {"id": "f-telecom", "cod": "00005", "name": "Telecom Rapid SRL", "cui": "55667788", "tara": "RO", "judet": "CJ",
+     "localitate": "CLUJ-NAPOCA", "adresa": "Str. Antenei nr. 4", "iban": "RO21DDDD0000000555666777", "banca": "BANCA DEMO"},
+    {"id": "f-cloudsoft", "cod": "00006", "name": "CloudSoft SRL", "cui": "44556677", "tara": "RO", "judet": "IS",
+     "localitate": "IASI", "adresa": "Bd. Tehnopolis nr. 2", "iban": "RO77EEEE0000000444555666", "banca": "BANCA DEMO"},
 ]
 
 SUPPLIERS = {
     "c-chirie": ("Imobiliara Nord SRL", "31415926", "IMN"),
     "c-it": ("TechSupport Pro SRL", "27182818", "TSP"),
     "c-curatenie": ("CleanOffice SRL", "16180339", "CLO"),
+    "c-telecom": ("Telecom Rapid SRL", "55667788", "TEL"),
+    "c-crm": ("CloudSoft SRL", "44556677", "CSF"),
 }
 
 # (fișier/număr factură) -> codul de alertă așteptat
@@ -77,8 +108,46 @@ ERORI_INTENTIONATE = {
     "CLO-2026-09": ["OUT_OF_CONTRACT"],
     "CLO-2026-10": ["OUT_OF_CONTRACT"],
     "OSE-1187": ["NO_CONTRACT"],
+    # ce s-a livrat efectiv (confirmări de livrare)
+    "TSP-2026-08": ["NOT_DELIVERED"],
+    "CLO-2026-06": ["UNDER_DELIVERED"],
+    # reducerea de 10% dispare de pe factură din iulie
+    "TEL-2026-07": ["DISCOUNT_MISSING"],
+    "TEL-2026-08": ["DISCOUNT_MISSING"],
+    "TEL-2026-09": ["DISCOUNT_MISSING"],
+    "TEL-2026-10": ["DISCOUNT_MISSING"],
+    # 25 de licențe plătite, 14 folosite
+    "CSF-2026-08": ["UNUSED_LICENSES"],
+    "CSF-2026-09": ["UNUSED_LICENSES"],
+    "CSF-2026-10": ["UNUSED_LICENSES"],
 }
 LUNI_LIPSA = {"c-it": ["2026-07"]}
+# alertele despre contracte, la 24.10.2026
+ALERTE_CONTRACTE = {("c-it", "EXPIRING"), ("c-crm", "RENEWAL_NOTICE"), ("c-it", "MISSING")}
+
+
+def _livrari():
+    """Confirmările de livrare / recepție (completate de office manager)."""
+    out = []
+    add = lambda cid, m, status, qty=None, doc="", note="": out.append(
+        {"contract_id": cid, "period": f"2026-{m:02d}", "status": status, "quantity": qty, "doc": doc, "note": note})
+    for m in range(1, 10):
+        add("c-chirie", m, "livrat")
+    for m in range(1, 10):
+        if m == 8:
+            add("c-it", m, "nelivrat", doc="Raport tichete helpdesk august", note="Helpdesk indisponibil toată luna; 14 tichete fără răspuns")
+        elif m != 7:
+            add("c-it", m, "livrat")
+    for m in range(1, 9):
+        if m == 6:
+            add("c-curatenie", m, "partial", 6, "PV recepție nr. 6/30.06.2026", "Două intervenții anulate de prestator (lipsă personal)")
+        else:
+            add("c-curatenie", m, "livrat", 10 if m == 5 else 8)
+    for m in range(2, 10):
+        add("c-telecom", m, "livrat", 10)
+    for m in range(1, 11):
+        add("c-crm", m, "livrat", 25 if m < 8 else 14, "Raport utilizare CRM" if m >= 8 else "")
+    return out
 
 
 def month_end(y: int, m: int) -> date:
@@ -184,6 +253,16 @@ def build():
                  pay="double" if m == 3 else ("none" if m >= 9 else "full"),
                  total_override=2200.0 if m == 2 else None)
 
+    for m in range(1, 11):
+        per = (date(2026, m, 1), month_end(2026, m))
+        tag = f"2026-{m:02d}"
+        # telefonie: 10 abonamente × 45 lei, cu 10% reducere (40,50) – reducerea dispare din iulie
+        if m >= 2:
+            emit(f"TEL-{tag}", "c-telecom", date(2026, m, 3), 20,
+                 [(f"Abonamente mobil + internet {tag}", 10, 40.5 if m <= 6 else 45.0, 21)], per)
+        # CRM: 25 licențe × 45 lei
+        emit(f"CSF-{tag}", "c-crm", date(2026, m, 1), 15, [(f"Licențe CRM utilizatori {tag}", 25, 45.0, 21)], per)
+
     emit("OSE-1187", ("Office Supplies Express SRL", "99887766"), date(2026, 9, 12), 10,
          [("Hârtie copiator A4", 20, 24.5, 21), ("Toner imprimantă", 2, 310.0, 21)],
          (date(2026, 9, 12), date(2026, 9, 12)))
@@ -194,6 +273,7 @@ def build():
         w.writerows(plati)
     (OUT / "contracte.json").write_text(json.dumps(CONTRACTE, ensure_ascii=False, indent=1), "utf-8")
     (OUT / "furnizori.json").write_text(json.dumps(FURNIZORI, ensure_ascii=False, indent=1), "utf-8")
+    (OUT / "livrari.json").write_text(json.dumps(_livrari(), ensure_ascii=False, indent=1), "utf-8")
     print(f"{len(list(facturi_dir.glob('*.xml')))} facturi + {len(list(spv_dir.glob('*.xml')))} în SPV, "
           f"{len(plati)} plăți, {len(CONTRACTE)} contracte")
 

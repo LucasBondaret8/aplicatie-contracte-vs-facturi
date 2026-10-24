@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { api, daysBetween, dmy, lei } from "../api.js";
 import { Arrows, Copy, Doc, Dot, ExportI, FilterI, Folder, Gavel, Lock, Paste, Print, Search, Sync, Tag, Unlock } from "../icons.jsx";
 import { BottomBar, Btn, Combo, Grid, Group, LinkBar, TBtn, TextBtns, Window } from "../ui.jsx";
-import { CompareDetail, EmailModal, PaymentModal, supplierOptions } from "./shared.jsx";
+import { CompareDetail, DISPUTABLE, EmailModal, PaymentModal, supplierOptions } from "./shared.jsx";
 
 const isPenalty = (l) => /penalit/i.test(l.description);
 const DRAFT = "__draft";
@@ -170,7 +170,7 @@ export default function Intrari({ ctx, params, onClose }) {
   };
   const pay = () => cur && setPayment({ supplier_cui: cur.invoice.supplier_cui, invoice_number: cur.invoice.number,
     amount: Math.max(0, cur.invoice.total_with_vat - cur.paid).toFixed(2) });
-  const disputable = !draft && cur?.alerts.some((a) => !["OVERDUE", "OVERPAID", "NO_CONTRACT"].includes(a.code));
+  const disputable = !draft && cur?.alerts.some(DISPUTABLE);
   const contest = async () => disputable && setEmail(await api.dispute(cur.invoice.id));
 
   const totals = rows.reduce((t, r) => ({ v: t.v + r.invoice.total_without_vat, tva: t.tva + r.invoice.vat_total,

@@ -7,6 +7,7 @@ import Furnizori from "./windows/Furnizori.jsx";
 import Contracte from "./windows/Contracte.jsx";
 import Verificare from "./windows/Verificare.jsx";
 import Scadentar from "./windows/Scadentar.jsx";
+import Livrari from "./windows/Livrari.jsx";
 
 const WINDOWS = {
   intrari: [Intrari, "Intrări"],
@@ -16,6 +17,7 @@ const WINDOWS = {
   contracte: [Contracte, "Contracte furnizori"],
   verificare: [Verificare, "Verificare contracte"],
   scadentar: [Scadentar, "Situație furnizori"],
+  livrari: [Livrari, "Confirmare livrări"],
 };
 
 // Structura meniului urmează programele de contabilitate obișnuite. Ce nu ține de verificarea
@@ -103,7 +105,7 @@ export default function App() {
   const cmap = useMemo(() => Object.fromEntries(data.contracts.map((c) => [c.id, c])), [data.contracts]);
   const company = data.invoices[0]?.customer_name || "Demo Distribuție SRL";
   const today = analysis?.summary.today;
-  const problems = (analysis?.summary.error || 0) + (analysis?.summary.warning || 0) + (analysis?.summary.missing || 0) + (spv?.new_invoices || 0);
+  const problems = (analysis?.summary.error || 0) + (analysis?.summary.warning || 0) + (analysis?.summary.contract_alerts || 0) + (spv?.new_invoices || 0);
 
   const importInvoices = () => invInput.current.click();
   const importPayments = () => payInput.current.click();
@@ -136,6 +138,7 @@ export default function App() {
     ["Diverse", [
       ["Comenzi"], ["Situație comenzi"],
       ["Contracte furnizori", () => open("contracte"), "ALT+9"],
+      ["Confirmare livrări (recepție servicii)", () => open("livrari")],
       ["Verificare facturi față de contracte", () => open("verificare"), "ALT+0"], "-",
       ["Cheltuieli / Venituri în avans"],
       ["Import date", null, null, [["Facturi e-Factura (XML / ZIP SPV)", importInvoices], ["Extras bancar (CSV)", importPayments], ["Date demo", loadDemo]]],

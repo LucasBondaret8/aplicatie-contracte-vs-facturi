@@ -105,6 +105,34 @@ def contracts_save(contract: dict):
     return store.upsert_contract(contract)
 
 
+@app.post("/api/deliveries")
+def deliveries_save(d: dict):
+    """Confirmarea de livrare / recepție pentru un contract și o lună: livrat / parțial / nelivrat + cantitatea primită."""
+    if not any(c["id"] == d.get("contract_id") for c in store.data["contracts"]):
+        raise HTTPException(400, "Contract inexistent.")
+    period = str(d.get("period") or "")
+    if len(period) != 7 or period[4] != "-":
+        raise HTTPException(400, "Luna trebuie să fie de forma AAAA-LL.")
+    if d.get("status") not in ("livrat", "partial", "nelivrat"):
+        raise HTTPException(400, "Starea trebuie să fie: livrat, partial sau nelivrat.")
+    qty = d.get("quantity")
+    try:
+        qty = None if qty in (None, "") else float(qty)
+    except (TypeError, ValueError) as e:
+        raise HTTPException(400, "Cantitatea primită trebuie să fie un număr.") from e
+    if qty is not None and qty < 0:
+        raise HTTPException(400, "Cantitatea primită nu poate fi negativă.")
+    return store.upsert_delivery({"contract_id": d["contract_id"], "period": period, "status": d["status"], "quantity": qty,
+                                  "doc": str(d.get("doc") or "").strip(), "note": str(d.get("note") or "").strip(),
+                                  "confirmed_at": date.today().isoformat()})
+
+
+@app.delete("/api/deliveries/{did}")
+def deliveries_delete(did: str):
+    store.delete_delivery(did)
+    return {"ok": True}
+
+
 @app.delete("/api/contracts/{cid}")
 def contracts_delete(cid: str):
     store.delete_contract(cid)
@@ -241,7 +269,7 @@ async def payments_import(file: UploadFile = File(...)):
 @app.get("/api/analysis")
 def analysis():
     d = store.data
-    return analyze(d["contracts"], d["invoices"], d["payments"], today())
+    return analyze(d["contracts"], d["invoices"], d["payments"], today(), d["deliveries"])
 
 
 @app.get("/api/report.csv")
@@ -276,7 +304,8 @@ def dispute_email(iid: str):
         raise HTTPException(404, "Factură inexistentă")
     inv = r["invoice"]
     c = next((x for x in store.data["contracts"] if x["id"] == r["contract_id"]), None)
-    issues = [a for a in r["alerts"] if a["code"] not in ("OVERDUE", "OVERPAID", "MISSING")]
+    # doar neconcordanțele care țin de furnizor (nu restanțele noastre sau licențele pe care nu le folosim)
+    issues = [a for a in r["alerts"] if a["code"] not in ("OVERDUE", "OVERPAID", "MISSING", "UNUSED_LICENSES", "NO_CONTRACT")]
     if not issues:
         return {"subject": "", "body": "Factura nu are neconcordanțe de contestat."}
     total = sum(a["amount"] for a in issues)
@@ -379,6 +408,8 @@ def demo_load():
                          "date": r["data"], "amount": float(r["suma"]), "method": r.get("metoda") or "banca"} for r in rows])
     for s in json.loads((DEMO_DIR / "furnizori.json").read_text("utf-8")):
         store.upsert_supplier(s)
+    for d in json.loads((DEMO_DIR / "livrari.json").read_text("utf-8")):
+        store.upsert_delivery(d)
     store.data["opening"] = {"banca": 250000.0, "casa": 30000.0}  # solduri inițiale la 01.01.2026
     store.save()
     return {"ok": True}

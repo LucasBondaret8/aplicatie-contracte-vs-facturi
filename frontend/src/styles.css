@@ -215,7 +215,7 @@ label.bbtn { cursor: pointer; }
 .tabs button.on { background: #fff; color: var(--text2); }
 
 /* indicatori */
-.tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 6px; }
+.tiles { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
 .tile { background: var(--panel); border-top: 3px solid var(--head); padding: 6px 10px; font-family: var(--ui); }
 .tile-v { font-size: 17px; font-weight: 700; color: var(--text2); }
 .tile-l { color: var(--muted); font-size: 11px; }
@@ -281,3 +281,29 @@ textarea { width: 100%; font: 12px Consolas, monospace; border: 1px solid #d4dae
 .pays-block .grid-wrap { flex: none; max-height: 130px; }
 .pays-h { font: 12px var(--ui); color: var(--text2); background: var(--btn2); padding: 3px 8px; }
 .verif-block { display: flex; flex-direction: column; gap: 6px; }
+
+/* alertele contractului (reînnoire, expirare) deasupra facturilor pe contract */
+.contract-alert { margin-bottom: 4px; font-size: 12px; }
+
+/* istoricul prețului pe contract */
+.chart { flex: 1; min-height: 0; background: var(--panel); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.chart-empty { padding: 20px; background: var(--panel); flex: 1; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font: 12px var(--ui); color: var(--text2); }
+.chart-legend i { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 5px; }
+.lg-billed { border-top: 2px solid var(--brand); }
+.lg-agreed { border-top: 2px dashed var(--muted); }
+.lg-bad { width: 9px !important; height: 9px !important; border-radius: 50%; background: var(--err); }
+.chart-sum { margin-left: auto; }
+.chart-box { position: relative; flex: 1; min-height: 160px; }
+.chart-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.ch-grid { stroke: var(--line); stroke-width: 1; }
+.ch-axis { font: 10px var(--data); fill: var(--muted); }
+.ch-billed { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; }
+.ch-agreed { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 6 4; }
+.ch-dot { fill: var(--brand); stroke: #fff; stroke-width: 2; }
+.ch-dot.bad { fill: var(--err); }
+.ch-label { font: 600 11px var(--data); fill: var(--text2); }
+.ch-label.muted { font-weight: 400; fill: var(--muted); }
+.ch-cross { stroke: var(--text2); stroke-width: 1; stroke-dasharray: 2 3; }
+.ch-tip { position: absolute; top: 4px; transform: translateX(-50%); background: #fff; border: 1px solid #c0c6d1; box-shadow: 0 3px 10px #0002;
+  padding: 6px 8px; font: 12px var(--data); color: var(--text); pointer-events: none; white-space: nowrap; }

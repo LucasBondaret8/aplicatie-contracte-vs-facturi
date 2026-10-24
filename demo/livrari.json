@@ -1,0 +1,346 @@
+[
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-01",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-02",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-03",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-04",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-05",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-06",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-07",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-08",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-chirie",
+  "period": "2026-09",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-01",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-02",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-03",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-04",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-05",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-06",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-08",
+  "status": "nelivrat",
+  "quantity": null,
+  "doc": "Raport tichete helpdesk august",
+  "note": "Helpdesk indisponibil toată luna; 14 tichete fără răspuns"
+ },
+ {
+  "contract_id": "c-it",
+  "period": "2026-09",
+  "status": "livrat",
+  "quantity": null,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-01",
+  "status": "livrat",
+  "quantity": 8,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-02",
+  "status": "livrat",
+  "quantity": 8,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-03",
+  "status": "livrat",
+  "quantity": 8,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-04",
+  "status": "livrat",
+  "quantity": 8,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-05",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-06",
+  "status": "partial",
+  "quantity": 6,
+  "doc": "PV recepție nr. 6/30.06.2026",
+  "note": "Două intervenții anulate de prestator (lipsă personal)"
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-07",
+  "status": "livrat",
+  "quantity": 8,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-curatenie",
+  "period": "2026-08",
+  "status": "livrat",
+  "quantity": 8,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-02",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-03",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-04",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-05",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-06",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-07",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-08",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-telecom",
+  "period": "2026-09",
+  "status": "livrat",
+  "quantity": 10,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-01",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-02",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-03",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-04",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-05",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-06",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-07",
+  "status": "livrat",
+  "quantity": 25,
+  "doc": "",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-08",
+  "status": "livrat",
+  "quantity": 14,
+  "doc": "Raport utilizare CRM",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-09",
+  "status": "livrat",
+  "quantity": 14,
+  "doc": "Raport utilizare CRM",
+  "note": ""
+ },
+ {
+  "contract_id": "c-crm",
+  "period": "2026-10",
+  "status": "livrat",
+  "quantity": 14,
+  "doc": "Raport utilizare CRM",
+  "note": ""
+ }
+]

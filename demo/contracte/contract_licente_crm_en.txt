@@ -1,0 +1,19 @@
+SOFTWARE SUBSCRIPTION AGREEMENT No. SaaS-2025-31
+
+This Agreement is entered into between CloudSoft SRL, a company registered in Romania, VAT code RO44556677 ("Provider"), and Demo Distributie SRL, VAT code RO40000001 ("Customer").
+
+1. Services. Cloud CRM platform for 25 user licenses.
+Provider grants Customer access to the platform for the number of licenses above.
+
+2. Fees. Customer shall pay RON 45.00 per license per month, excluding VAT. VAT of 21% applies.
+
+3. Payment. Invoices are payable within 15 days of the invoice date.
+
+4. Term. This Agreement is effective as of 01.12.2025 and continues until 30.11.2026 (the "Initial Term").
+
+5. Renewal. This Agreement shall automatically renew for successive periods of 12 months unless either party gives written notice of non-renewal at least 30 days before the end of the then-current term.
+
+6. Late payment. No late payment penalties apply.
+
+Provider                                Customer
+CloudSoft SRL                           Demo Distributie SRL

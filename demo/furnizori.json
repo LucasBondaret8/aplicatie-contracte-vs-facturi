@@ -46,5 +46,29 @@
   "adresa": "Bd. Tehnologiei nr. 7",
   "iban": "RO09CCCC0000000987654321",
   "banca": "BANCA DEMO"
+ },
+ {
+  "id": "f-telecom",
+  "cod": "00005",
+  "name": "Telecom Rapid SRL",
+  "cui": "55667788",
+  "tara": "RO",
+  "judet": "CJ",
+  "localitate": "CLUJ-NAPOCA",
+  "adresa": "Str. Antenei nr. 4",
+  "iban": "RO21DDDD0000000555666777",
+  "banca": "BANCA DEMO"
+ },
+ {
+  "id": "f-cloudsoft",
+  "cod": "00006",
+  "name": "CloudSoft SRL",
+  "cui": "44556677",
+  "tara": "RO",
+  "judet": "IS",
+  "localitate": "IASI",
+  "adresa": "Bd. Tehnopolis nr. 2",
+  "iban": "RO77EEEE0000000444555666",
+  "banca": "BANCA DEMO"
  }
 ]
