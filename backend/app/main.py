@@ -93,6 +93,12 @@ async def contracts_extract(file: UploadFile = File(...)):
 @app.post("/api/contracts")
 def contracts_save(contract: dict):
     contract["supplier_cui"] = normalize_cui(contract.get("supplier_cui"))
+    missing = [label for key, label in (("supplier_cui", "codul fiscal al furnizorului"), ("supplier_name", "furnizorul"),
+                                        ("unit_price", "prețul"), ("start_date", "data de început")) if not contract.get(key)]
+    if missing:
+        raise HTTPException(400, f"Completează în fișa contractului: {', '.join(missing)}. Fără ele facturile nu pot fi verificate.")
+    if contract.get("end_date") and contract["end_date"] < contract["start_date"]:
+        raise HTTPException(400, "Data de sfârșit a contractului e înaintea datei de început.")
     return store.upsert_contract(contract)
 
 
@@ -181,10 +187,12 @@ def invoices_delete(iid: str):
 def payments_save(p: dict):
     try:
         payment = {"invoice_number": str(p["invoice_number"]).strip(), "supplier_cui": normalize_cui(p["supplier_cui"]),
-                   "date": p["date"], "amount": float(p["amount"]), "method": p.get("method") or "banca",
-                   "doc": p.get("doc") or ""}
-    except (KeyError, ValueError) as e:
+                   "date": date.fromisoformat(str(p["date"])).isoformat(), "amount": round(float(p["amount"]), 2),
+                   "method": p.get("method") or "banca", "doc": p.get("doc") or ""}
+    except (KeyError, ValueError, TypeError) as e:
         raise HTTPException(400, f"Plată invalidă: {e}") from e
+    if payment["amount"] <= 0 or not payment["invoice_number"] or not payment["supplier_cui"]:
+        raise HTTPException(400, "Plata trebuie să aibă furnizor, factură și o sumă mai mare ca 0.")
     if p.get("id"):
         payment["id"] = p["id"]
     return store.upsert_payment(payment)
@@ -198,18 +206,31 @@ def payments_delete(pid: str):
 
 @app.post("/api/payments/import")
 async def payments_import(file: UploadFile = File(...)):
-    """CSV: numar_factura;cui_furnizor;data;suma (export registru bancă)."""
-    text = (await file.read()).decode("utf-8-sig", errors="replace")
-    dialect = csv.Sniffer().sniff(text.splitlines()[0], delimiters=";,")
-    rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
+    """CSV: numar_factura;cui_furnizor;data;suma[;metoda]. Plățile se ADAUGĂ la cele existente (fără dubluri)."""
+    text = (await file.read()).decode("utf-8-sig", errors="replace").strip()
+    if not text:
+        raise HTTPException(400, "Fișierul CSV este gol.")
     try:
-        payments = [{"invoice_number": r["numar_factura"].strip(), "supplier_cui": normalize_cui(r["cui_furnizor"]),
-                     "date": r["data"].strip(), "amount": float(r["suma"].replace(",", ".")),
-                     "method": (r.get("metoda") or "banca").strip().lower()} for r in rows]
-    except KeyError as e:
-        raise HTTPException(400, f"Coloană lipsă în CSV: {e}") from e
-    store.set_payments(payments)
-    return {"payments": len(payments)}
+        dialect = csv.Sniffer().sniff(text.splitlines()[0], delimiters=";,")
+    except csv.Error:
+        dialect = "excel"
+    payments = []
+    for n, r in enumerate(csv.DictReader(io.StringIO(text), dialect=dialect), start=2):
+        try:
+            p = {"invoice_number": r["numar_factura"].strip(), "supplier_cui": normalize_cui(r["cui_furnizor"]),
+                 "date": date.fromisoformat(r["data"].strip()).isoformat(), "amount": round(float(r["suma"].replace(",", ".")), 2),
+                 "method": (r.get("metoda") or "banca").strip().lower()}
+        except KeyError as e:
+            raise HTTPException(400, f"Coloană lipsă în CSV: {e}. Coloane necesare: numar_factura;cui_furnizor;data;suma") from e
+        except (ValueError, AttributeError) as e:
+            raise HTTPException(400, f"Rândul {n} din CSV nu e valid ({e}). Data: AAAA-LL-ZZ, suma: număr.") from e
+        if p["amount"] > 0:
+            payments.append(p)
+    existing = {(p["supplier_cui"], p["invoice_number"], p["date"], round(p["amount"], 2)) for p in store.data["payments"]}
+    new = [p for p in payments if (p["supplier_cui"], p["invoice_number"], p["date"], p["amount"]) not in existing]
+    for p in new:
+        store.upsert_payment(p)
+    return {"payments": len(new), "skipped": len(payments) - len(new)}
 
 
 # ---------- verificare ----------

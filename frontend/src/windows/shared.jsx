@@ -164,7 +164,9 @@ export function ContractModal({ ctx, initial, onClose }) {
       const r = await api.extractContract(file);
       setFields(r.fields);
       setSource(r.source);
-      if (r.source === "heuristic") setWarn("AI indisponibil (lipsește cheia Anthropic) – fișa a fost completată fără AI. Verifică toate câmpurile.");
+      if (!r.fields.supplier_cui && !r.fields.unit_price) {
+        setWarn("Nu am găsit în fișier furnizorul și prețul. Verifică fișierul (un PDF scanat are nevoie de AI) sau completează fișa de mână.");
+      } else if (r.source === "heuristic") setWarn("AI indisponibil (lipsește cheia Anthropic) – fișa a fost completată fără AI. Verifică toate câmpurile.");
     } catch (e) {
       setWarn(e.message);
     }

@@ -13,6 +13,11 @@ import re
 
 log = logging.getLogger(__name__)
 
+try:  # se încarcă o dată, la pornirea serverului (durează câteva secunde), nu la primul contract
+    import anthropic
+except ImportError:  # fără pachet: rămâne extragerea fără AI
+    anthropic = None
+
 MODEL = "claude-opus-5-5"
 
 CONTRACT_SCHEMA = {
@@ -74,8 +79,8 @@ def extract_contract(data: bytes, filename: str) -> dict:
 
 
 def _extract_with_claude(data: bytes, is_pdf: bool) -> dict:
-    import anthropic
-
+    if anthropic is None:
+        raise RuntimeError("pachetul anthropic nu e instalat")
     client = anthropic.Anthropic()
     if is_pdf:
         doc = {"type": "document", "source": {"type": "base64", "media_type": "application/pdf",

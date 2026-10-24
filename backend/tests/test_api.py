@@ -89,6 +89,27 @@ def test_suppliers(client):
     assert any(s["cui"] == "11223344" and s["cod"] == "00005" for s in client.get("/api/state").json()["suppliers"])
 
 
+def test_payment_validation_and_import_adds(client, tmp_path):
+    bad = {"invoice_number": "X", "supplier_cui": "1", "date": "2026-01-01"}
+    assert client.post("/api/payments", json={**bad, "amount": -5}).status_code == 400
+    assert client.post("/api/payments", json={**bad, "amount": 5, "date": "31.01.2026"}).status_code == 400
+    before = len(client.get("/api/state").json()["payments"])
+    csv_ok = "numar_factura;cui_furnizor;data;suma\nIMN-2026-09;RO31415926;2026-10-20;15578.75\nIMN-2026-01;RO31415926;2026-01-11;15578.75\n"
+    r = client.post("/api/payments/import", files={"file": ("extras.csv", csv_ok)}).json()
+    assert r == {"payments": 1, "skipped": 1}  # a doua plată exista deja
+    assert len(client.get("/api/state").json()["payments"]) == before + 1  # nu se pierd plățile existente
+    r = client.post("/api/payments/import", files={"file": ("rau.csv", "numar_factura;cui_furnizor;data;suma\nX;1;2026-01-01;abc\n")})
+    assert r.status_code == 400 and "Rândul 2" in r.json()["detail"]
+    assert client.post("/api/payments/import", files={"file": ("gol.csv", "")}).status_code == 400
+
+
+def test_contract_needs_supplier_and_price(client):
+    assert client.post("/api/contracts", json={"title": "x", "supplier_cui": "", "unit_price": 0}).status_code == 400
+    ok = {"title": "Telefonie", "supplier_name": "Telecom SRL", "supplier_cui": "RO55667788", "unit_price": 450, "start_date": "2026-02-01"}
+    assert client.post("/api/contracts", json={**ok, "end_date": "2025-01-01"}).status_code == 400
+    assert client.post("/api/contracts", json=ok).json()["supplier_cui"] == "55667788"
+
+
 def test_manual_invoice_requires_lines(client):
     r = client.post("/api/invoices/manual", json={"number": "1", "supplier_cui": "1", "issue_date": "2026-10-01", "lines": []})
     assert r.status_code == 400

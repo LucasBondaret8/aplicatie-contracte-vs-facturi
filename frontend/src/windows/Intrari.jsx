@@ -163,7 +163,11 @@ export default function Intrari({ ctx, params, onClose }) {
       return `Factura ${cur.invoice.number} a fost ${value ? "validată" : "devalidată"}`;
     });
   };
-  const del = () => cur && confirm(`Ștergi factura ${cur.invoice.number}?`) && ctx.run("Ștergere", () => api.deleteInvoice(cur.invoice.id));
+  const del = () => {
+    if (!cur) return;
+    if (cur.invoice.validated) return alert("Factura este validată. Devalidează-o înainte de ștergere.");
+    if (confirm(`Ștergi factura ${cur.invoice.number}?`)) ctx.run("Ștergere", () => api.deleteInvoice(cur.invoice.id));
+  };
   const pay = () => cur && setPayment({ supplier_cui: cur.invoice.supplier_cui, invoice_number: cur.invoice.number,
     amount: Math.max(0, cur.invoice.total_with_vat - cur.paid).toFixed(2) });
   const disputable = !draft && cur?.alerts.some((a) => !["OVERDUE", "OVERPAID", "NO_CONTRACT"].includes(a.code));
@@ -175,7 +179,7 @@ export default function Intrari({ ctx, params, onClose }) {
 
   return (
     <Window onClose={draft ? () => setDraft(null) : onClose}>
-      <LinkBar onAdd={startAdd} onEdit={startEdit} onDelete={del}
+      <LinkBar onAdd={startAdd} onEdit={startEdit} onDelete={cur && !cur.invoice.validated ? del : null}
         editing={draft && { save: saveDraft, cancel: () => setDraft(null) }}
         tools={<>
           <Group><TBtn icon={<Copy />} title="Copiere" /><TBtn icon={<Paste />} title="Lipire" /><TBtn icon={<ExportI />} title="Export date" onClick={() => window.open("/api/report.csv")} /></Group>

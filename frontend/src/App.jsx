@@ -223,7 +223,8 @@ export default function App() {
             return `Import e-Factura: ${r.added} facturi noi din ${r.parsed}${r.errors.length ? ". Erori: " + r.errors.join("; ") : ""}`; }); }} />
       <input ref={payInput} type="file" accept=".csv" hidden
         onChange={(e) => { const f = e.target.files[0]; e.target.value = "";
-          run("Import extras", async () => { const r = await api.importPayments(f); open("banca"); return `Import extras: ${r.payments} plăți`; }); }} />
+          run("Import extras", async () => { const r = await api.importPayments(f); open("banca");
+            return `Import extras: ${r.payments} plăți noi${r.skipped ? `, ${r.skipped} existau deja și au fost sărite` : ""}`; }); }} />
     </div>
   );
 }
