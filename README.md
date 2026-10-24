@@ -45,12 +45,13 @@ Scurtături:
 
 | Fereastră | Ce face |
 |---|---|
-| Intrări | facturile primite din e-Factura, cu liniile, prețul din contract, diferența, contul de cheltuială și panoul „Detalii” cu verificarea; Validez / Devalidez, Plată..., Contestație... |
-| Jurnal de bancă / Registru de casă | zilele cu plăți sus, operațiile zilei jos (401 / 5121 sau 5311); adăugare manuală sau import extras |
-| Furnizori | rulaj, plătit, sold și fișa furnizorului cu sold cumulat |
-| Contracte | fișele contractelor (completate de AI din PDF) și facturile lunare pe fiecare contract, inclusiv lunile lipsă |
+| Intrări | facturile primite (SPV / manual / import), liniile cu prețul din contract și diferența; „Detalii” lângă grila de sus: plățile facturii + verificarea față de contract; Validez / Plată / Devalidez / Contestație |
+| Furnizori | o grilă (Cod, Denumire, Cod fiscal, Cont analitic 401.xxxxx, Țara, Județ, Localitate, Adresă, Cont bancar) + sold și verificare; Adaug / Modific direct în grilă |
+| Situație furnizori | perioadă (de la / până la / lună / an) și tab-urile Situație generală, Facturi - furnizor (cu plățile fiecărei facturi), Scadențar (și pe intervale, ALT+S) |
+| Jurnal de bancă / Registru de casă | zilele cu sold inițial, încasări, plăți, sold final; operațiile zilei (401.xxxxx / 5121 sau 5311, „Achit. FURNIZOR nr.: X”) |
+| Plată | dialogul Data, Cont plată, Reține ca implicit, Suma plătită, Nr. doc plată; Accept (ALT+A) / Renunț (ALT+R) |
+| Contracte furnizori | fișele contractelor (completate de AI din PDF) și facturile lunare pe fiecare contract, inclusiv lunile lipsă |
 | Verificare | toate neconcordanțele, cu suma de recuperat |
-| Scadențar | datorii neachitate pe intervale de întârziere și riscul de penalități |
 
 Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contabile, Declarații, Salarii...) apar dezactivate: ele rămân în programul de contabilitate al clientului. Interfața imită stilul general, nu copiază numele, logo-ul sau iconițele altui produs.
 

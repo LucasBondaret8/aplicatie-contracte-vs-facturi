@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { api, daysBetween, dmy, lei } from "../api.js";
 import { Arrows, Copy, Doc, Dot, ExportI, FilterI, Folder, Gavel, Lock, Paste, Print, Search, Sync, Tag, Unlock } from "../icons.jsx";
-import { BottomBar, Btn, Grid, Group, LinkBar, TBtn, TextBtns, Window } from "../ui.jsx";
-import { CompareDetail, EmailModal, PaymentModal, partners } from "./shared.jsx";
+import { BottomBar, Btn, Combo, Grid, Group, LinkBar, TBtn, TextBtns, Window } from "../ui.jsx";
+import { CompareDetail, EmailModal, PaymentModal, supplierOptions } from "./shared.jsx";
 
 const isPenalty = (l) => /penalit/i.test(l.description);
 const DRAFT = "__draft";
@@ -37,7 +37,7 @@ export default function Intrari({ ctx, params, onClose }) {
   const contract = cur && ctx.cmap[cur.contract_id];
 
   // ---- factura manuală (rândul editabil, ca în programul de contabilitate) ----
-  const suppliers = useMemo(() => partners(ctx), [ctx]);
+  const options = useMemo(() => supplierOptions(ctx), [ctx]);
   const draftContract = draft && ctx.data.contracts.find((c) => c.supplier_cui === draft.supplier_cui);
   const dTot = draft ? draft.lines.reduce((t, l) => {
     const v = num(l.quantity) * num(l.unit_price);
@@ -48,9 +48,7 @@ export default function Intrari({ ctx, params, onClose }) {
   const contractLine = (c, issue) => ({
     description: `${c.title} ${issue.slice(0, 7)}`, unit: c.unit, quantity: c.quantity_per_period || 1, unit_price: c.unit_price, vat_pct: c.vat_rate,
   });
-  const pickSupplier = (text) => {
-    const s = suppliers.find((p) => p.name === text || p.cui === text.replace(/^RO/i, ""));
-    if (!s) return setD(/^\d+$/.test(text) ? { supplier_cui: text } : { supplier_name: text });
+  const pickSupplier = (s) => {
     const c = ctx.data.contracts.find((x) => x.supplier_cui === s.cui);
     setDraft((d) => ({
       ...d, supplier_cui: s.cui, supplier_name: s.name,
@@ -94,9 +92,11 @@ export default function Intrari({ ctx, params, onClose }) {
     { key: "nr", label: "Nr. doc.", w: 100, sortValue: (r) => (D(r) ? "￿" : r.invoice.number),
       render: (r) => (D(r) ? inp(draft.number, (v) => setD({ number: v }), { autoFocus: true, placeholder: "Nr. factură" }) : r.invoice.number) },
     { key: "cod", label: "Cod", w: 72, sortValue: (r) => r.invoice.supplier_cui,
-      render: (r) => (D(r) ? inp(draft.supplier_cui, pickSupplier, { list: "bvs-cui", placeholder: "CUI" }) : r.invoice.supplier_cui) },
+      render: (r) => (D(r) ? <Combo value={draft.supplier_cui} onType={(v) => setD({ supplier_cui: v.replace(/^RO/i, "") })} onPick={(o) => pickSupplier(o.p)}
+        options={options} cols={["Denumire", "Cod", "Cod fiscal"]} placeholder="CUI" /> : r.invoice.supplier_cui) },
     { key: "furnizor", label: "Furnizor", w: 200, sortValue: (r) => (D(r) ? "￿" : r.invoice.supplier_name),
-      render: (r) => (D(r) ? inp(draft.supplier_name, pickSupplier, { list: "bvs-furnizori", placeholder: "Alege sau scrie furnizorul" }) : r.invoice.supplier_name) },
+      render: (r) => (D(r) ? <Combo value={draft.supplier_name} onType={(v) => setD({ supplier_name: v })} onPick={(o) => pickSupplier(o.p)}
+        options={options} cols={["Denumire", "Cod", "Cod fiscal"]} placeholder="Alege sau scrie furnizorul" /> : r.invoice.supplier_name) },
     { key: "tvai", label: "TVA I", w: 40, render: () => "" },
     { key: "data", label: "Data", w: 96, sortValue: (r) => (D(r) ? "￿" : r.invoice.issue_date),
       render: (r) => (D(r) ? inp(draft.issue_date, (v) => setDraft((d) => ({ ...d, issue_date: v,
@@ -175,9 +175,6 @@ export default function Intrari({ ctx, params, onClose }) {
 
   return (
     <Window onClose={draft ? () => setDraft(null) : onClose}>
-      <datalist id="bvs-furnizori">{suppliers.map((s) => <option key={s.cui} value={s.name} />)}</datalist>
-      <datalist id="bvs-cui">{suppliers.map((s) => <option key={s.cui} value={s.cui}>{s.name}</option>)}</datalist>
-
       <LinkBar onAdd={startAdd} onEdit={startEdit} onDelete={del}
         editing={draft && { save: saveDraft, cancel: () => setDraft(null) }}
         tools={<>
@@ -197,9 +194,9 @@ export default function Intrari({ ctx, params, onClose }) {
         </>}
         detalii={{ on: showDet, toggle: () => setShowDet(!showDet) }} />
 
-      <div className={showDet ? "with-det" : "split"}>
-        <div>
-          <div className="pane top">
+      <div className="split">
+          <div className={`pane top${showDet ? " with-det" : ""}`}>
+           <div className="col">
             <Grid columns={columns} rows={shownRows} getId={(r) => r.invoice.id} selected={sel}
               onSelect={(id) => { if (!draft) { setSel(id); setSelLine(0); } }} onOpen={() => (draft ? null : setShowDet(true))}
               onInsert={startAdd} onDelete={del}
@@ -213,6 +210,15 @@ export default function Intrari({ ctx, params, onClose }) {
               <input placeholder="Cod" style={{ width: 72 }} value={f.cod} onChange={(e) => setF({ ...f, cod: e.target.value })} />
               <input placeholder="Furnizor" style={{ width: 200 }} value={f.furnizor} onChange={(e) => setF({ ...f, furnizor: e.target.value })} />
             </div>
+           </div>
+            {showDet && (
+              <div className="detail">
+                {draft ? <DraftDetail draft={draft} contract={draftContract} total={dTot} /> : <>
+                  <PaymentsOfInvoice ctx={ctx} r={cur} />
+                  <CompareDetail r={cur} contract={contract} />
+                </>}
+              </div>
+            )}
           </div>
           <div className="pane bottom">
             <LinkBar keys="DOT" onAdd={draft ? addLine : null} onDelete={draft && draft.lines.length ? delLine : null}
@@ -224,15 +230,13 @@ export default function Intrari({ ctx, params, onClose }) {
                   ["Contract", !draft && contract ? () => ctx.open("contracte", { select: contract.id }) : null, "Deschide contractul furnizorului"],
                   ["Contestație", disputable ? contest : null, "Email de contestație către furnizor"],
                   ["Plată", !draft && cur ? pay : null],
-                  ["Fișă furnizor", !draft && cur ? () => ctx.open("furnizori", { select: cur.invoice.supplier_cui }) : null],
+                  ["Fișă furnizor", !draft && cur ? () => ctx.open("scadentar", { tab: "facturi", select: cur.invoice.supplier_cui }) : null],
                 ]} />
               </>} />
             <Grid columns={lineCols} rows={lineRows} selected={selLine} onSelect={setSelLine}
               rowClass={() => (draft ? "editing" : "")} onInsert={draft ? addLine : null}
               empty={draft ? "Adaug (ALT + D) pentru o linie nouă." : ""} />
           </div>
-        </div>
-        {showDet && (draft ? <DraftDetail draft={draft} contract={draftContract} total={dTot} /> : <CompareDetail r={cur} contract={contract} />)}
       </div>
 
       <BottomBar>
@@ -251,11 +255,30 @@ export default function Intrari({ ctx, params, onClose }) {
   );
 }
 
+/** Detalii: plățile făcute pe factura selectată (Tip, Cont, Număr, Data, Suma). */
+function PaymentsOfInvoice({ ctx, r }) {
+  if (!r) return null;
+  const pays = ctx.data.payments.filter((p) => p.supplier_cui === r.invoice.supplier_cui && p.invoice_number === r.invoice.number);
+  const cols = [
+    { key: "tip", label: "Tip", w: 46, render: (p) => (p.method === "casa" ? "Casa" : "Banca") },
+    { key: "cont", label: "Cont", w: 44, render: (p) => (p.method === "casa" ? "5311" : "5121") },
+    { key: "doc", label: "Număr", w: 60, render: (p) => p.doc || "" },
+    { key: "date", label: "Data", w: 72, render: (p) => dmy(p.date) },
+    { key: "amount", label: "Suma", w: 78, align: "r", render: (p) => lei(p.amount) },
+  ];
+  return (
+    <div className="pays-block">
+      <div className="pays-h">Plăți {r.invoice.number}/{dmy(r.invoice.issue_date)}</div>
+      <Grid columns={cols} rows={pays} selected={null} minRows={2} footer={{ amount: lei(pays.reduce((t, p) => t + p.amount, 0)) }} />
+    </div>
+  );
+}
+
 /** Panoul din dreapta cât timp se introduce o factură de mână: ce prevede contractul furnizorului. */
 function DraftDetail({ draft, contract, total }) {
   const term = draft.issue_date && draft.due_date ? daysBetween(draft.issue_date, draft.due_date) : null;
   return (
-    <div className="detail">
+    <div className="verif-block">
       <div className="detail-h">{draft.id ? "Modific factură" : "Factură nouă"} <span className="badge warning">Manual</span></div>
       {!contract ? (
         <div className="muted">Alege furnizorul. Dacă are contract, completez liniile, scadența și TVA-ul din contract.</div>

@@ -74,6 +74,21 @@ def test_spv_invoice_cannot_be_edited_manually(client):
     assert r.status_code == 400
 
 
+def test_suppliers(client):
+    sup = client.get("/api/state").json()["suppliers"]
+    assert {s["cod"] for s in sup} == {"00001", "00002", "00003", "00004"}
+    new = client.post("/api/suppliers", json={"name": "Google Ireland Ltd", "cui": "IE6388047V", "tara": "IE"}).json()
+    assert new["cod"] == "00005"
+    assert client.post("/api/suppliers", json={"name": "Alt nume", "cui": "IE6388047V"}).status_code == 400
+    used = next(s for s in sup if s["cui"] == "31415926")
+    assert client.delete(f"/api/suppliers/{used['id']}").status_code == 400
+    assert client.delete(f"/api/suppliers/{new['id']}").status_code == 200
+    # un furnizor nou, apărut doar pe o factură manuală, primește automat fișă și cod
+    client.post("/api/invoices/manual", json={"number": "77", "supplier_cui": "11223344", "supplier_name": "Nou SRL",
+                                               "issue_date": "2026-10-20", "lines": [{"description": "x", "quantity": 1, "unit_price": 10, "vat_pct": 21}]})
+    assert any(s["cui"] == "11223344" and s["cod"] == "00005" for s in client.get("/api/state").json()["suppliers"])
+
+
 def test_manual_invoice_requires_lines(client):
     r = client.post("/api/invoices/manual", json={"number": "1", "supplier_cui": "1", "issue_date": "2026-10-01", "lines": []})
     assert r.status_code == 400

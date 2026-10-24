@@ -44,6 +44,18 @@ CONTRACTE = [
     },
 ]
 
+# fișele furnizorilor (date inventate)
+FURNIZORI = [
+    {"id": "f-cleanoffice", "cod": "00001", "name": "CleanOffice SRL", "cui": "16180339", "tara": "RO", "judet": "IF",
+     "localitate": "VOLUNTARI", "adresa": "Str. Florilor nr. 12", "iban": "RO49AAAA1B31007593840000", "banca": "BANCA DEMO"},
+    {"id": "f-imobiliara", "cod": "00002", "name": "Imobiliara Nord SRL", "cui": "31415926", "tara": "RO", "judet": "B",
+     "localitate": "BUCURESTI", "adresa": "Str. Nordului nr. 3", "iban": "RO66BBBB0000000123456789", "banca": "BANCA DEMO"},
+    {"id": "f-ose", "cod": "00003", "name": "Office Supplies Express SRL", "cui": "99887766", "tara": "RO", "judet": "CJ",
+     "localitate": "CLUJ-NAPOCA", "adresa": "Bd. Muncii nr. 40", "iban": "", "banca": ""},
+    {"id": "f-techsupport", "cod": "00004", "name": "TechSupport Pro SRL", "cui": "27182818", "tara": "RO", "judet": "B",
+     "localitate": "BUCURESTI", "adresa": "Bd. Tehnologiei nr. 7", "iban": "RO09CCCC0000000987654321", "banca": "BANCA DEMO"},
+]
+
 SUPPLIERS = {
     "c-chirie": ("Imobiliara Nord SRL", "31415926", "IMN"),
     "c-it": ("TechSupport Pro SRL", "27182818", "TSP"),
@@ -181,6 +193,7 @@ def build():
         w.writeheader()
         w.writerows(plati)
     (OUT / "contracte.json").write_text(json.dumps(CONTRACTE, ensure_ascii=False, indent=1), "utf-8")
+    (OUT / "furnizori.json").write_text(json.dumps(FURNIZORI, ensure_ascii=False, indent=1), "utf-8")
     print(f"{len(list(facturi_dir.glob('*.xml')))} facturi + {len(list(spv_dir.glob('*.xml')))} în SPV, "
           f"{len(plati)} plăți, {len(CONTRACTE)} contracte")
 

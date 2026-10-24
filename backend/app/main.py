@@ -51,7 +51,33 @@ def today() -> date:
 
 @app.get("/api/state")
 def state():
+    store.sync_suppliers()
     return store.data
+
+
+# ---------- furnizori ----------
+
+@app.post("/api/suppliers")
+def suppliers_save(s: dict):
+    s["cui"] = normalize_cui(s.get("cui"))
+    s["name"] = str(s.get("name") or "").strip()
+    if not s["name"] or not s["cui"]:
+        raise HTTPException(400, "Completează denumirea și codul fiscal.")
+    if any(x["cui"] == s["cui"] and x["id"] != s.get("id") for x in store.data["suppliers"]):
+        raise HTTPException(400, f"Există deja un furnizor cu codul fiscal {s['cui']}.")
+    s.setdefault("tara", "RO")
+    return store.upsert_supplier(s)
+
+
+@app.delete("/api/suppliers/{sid}")
+def suppliers_delete(sid: str):
+    s = next((x for x in store.data["suppliers"] if x["id"] == sid), None)
+    if not s:
+        raise HTTPException(404, "Furnizor inexistent")
+    if any(i["supplier_cui"] == s["cui"] for i in store.data["invoices"]) or any(c["supplier_cui"] == s["cui"] for c in store.data["contracts"]):
+        raise HTTPException(400, "Furnizorul are facturi sau contracte și nu poate fi șters.")
+    store.delete_supplier(sid)
+    return {"ok": True}
 
 
 # ---------- contracte ----------
@@ -327,6 +353,10 @@ def demo_load():
     rows = list(csv.DictReader(io.StringIO((DEMO_DIR / "plati.csv").read_text("utf-8-sig")), delimiter=";"))
     store.set_payments([{"invoice_number": r["numar_factura"], "supplier_cui": normalize_cui(r["cui_furnizor"]),
                          "date": r["data"], "amount": float(r["suma"]), "method": r.get("metoda") or "banca"} for r in rows])
+    for s in json.loads((DEMO_DIR / "furnizori.json").read_text("utf-8")):
+        store.upsert_supplier(s)
+    store.data["opening"] = {"banca": 250000.0, "casa": 30000.0}  # solduri inițiale la 01.01.2026
+    store.save()
     return {"ok": True}
 
 

@@ -211,6 +211,7 @@ label.bbtn { cursor: pointer; }
 /* tab-uri (ca la Contracte) */
 .tabs { display: flex; gap: 1px; font: 12px var(--ui); margin-bottom: 4px; }
 .tabs button { border: 1px solid var(--line); border-bottom: 0; background: var(--btn2); color: var(--brand); padding: 4px 10px; border-radius: 2px 2px 0 0; }
+.tabs button:disabled { color: #a9adb6; cursor: default; }
 .tabs button.on { background: #fff; color: var(--text2); }
 
 /* indicatori */
@@ -223,22 +224,42 @@ label.bbtn { cursor: pointer; }
 .tile.error { border-top-color: var(--err); } .tile.error .tile-v { color: var(--err); }
 .tile.money { border-top-color: var(--brand); } .tile.money .tile-v { color: var(--brand); }
 
-/* ferestre de dialog */
-.modal-bg { position: fixed; inset: 0; background: #1e2a3a55; display: flex; align-items: flex-start; justify-content: center; padding: 60px 16px 16px; z-index: 50; }
-.modal { background: var(--bg); max-width: 100%; max-height: calc(100vh - 80px); display: flex; flex-direction: column; box-shadow: 0 8px 30px #0004; border-radius: 3px; overflow: hidden; }
-.modal-h { display: flex; align-items: center; background: var(--panel); padding: 0 0 0 14px; height: 38px; font: 700 14px var(--ui); color: var(--text2); border-bottom: 1px solid var(--line); }
-.modal-h .x { margin-left: auto; width: 40px; height: 38px; border: 0; background: none; color: var(--muted); font-size: 14px; }
-.modal-h .x:hover { background: var(--err); color: #fff; }
-.modal-b { padding: 12px 14px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-.modal-f { padding: 8px 14px 12px; display: flex; justify-content: flex-end; gap: 6px; }
+/* ferestre de dialog (titlu subliniat, câmpuri pe verticală, butoane Accept / Renunț) */
+.modal-bg { position: fixed; inset: 0; background: rgba(33, 37, 41, .5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.modal { background: #f2f8ff; max-width: 100%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; box-shadow: 0 6px 24px #0004; border-radius: 5px; overflow: hidden; }
+.modal-h { margin: 14px 15px 0; padding-bottom: 6px; border-bottom: 1px solid #c0c6d1; font: 500 20px var(--ui); color: var(--text); }
+.modal-b { padding: 10px 15px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.modal-f { padding: 4px 15px 15px; display: flex; gap: 10px; }
+.dbtn { flex: 1; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid #c0c6d1; background: var(--btn); color: #000; font: 13px var(--ui); }
+.dbtn:hover:not(:disabled) { background: var(--btn-hover); }
+.dbtn:disabled { color: #a9adb6; }
 .upload { display: flex; align-items: center; gap: 10px; font-family: var(--ui); }
 .form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
-.field { display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 8px; font: 12px var(--ui); color: var(--text2); }
+.vform { display: flex; flex-direction: column; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 3px; font: 13px var(--data); color: var(--text2); }
+.form .field { display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 8px; font-size: 12px; }
 .field.wide { grid-column: 1 / -1; }
-.field input, .field select { height: 26px; border: 1px solid var(--line); padding: 0 8px; background: #fff; width: 100%; font: 12px var(--data); }
+.field input, .field select { height: 24px; border: 1px solid #d4dae5; padding: 0 6px; background: #fff; width: 100%; font: 11px var(--data); color: #000; }
+.field input[type=number], .field input.r { text-align: right; }
+.field.check { flex-direction: row; align-items: center; gap: 6px; }
+.field.check input { width: auto; height: auto; }
 .field input:focus, .field select:focus, .search input:focus, .filterrow input:focus { outline: 1px solid var(--brand); border-color: var(--brand); }
-textarea { width: 100%; font: 12px Consolas, monospace; border: 1px solid var(--line); padding: 8px; resize: vertical; background: #fff; }
+textarea { width: 100%; font: 12px Consolas, monospace; border: 1px solid #d4dae5; padding: 8px; resize: vertical; background: #fff; }
 .link { border: 0; background: none; color: var(--brand); text-decoration: underline; padding: 0; }
+
+/* listă derulantă cu căutare */
+.combo { position: relative; display: flex; align-items: center; width: 100%; }
+.combo .cell-in { padding-right: 18px; }
+.combo-caret { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: var(--text2); padding: 0 3px; height: 16px; display: flex; align-items: center; }
+.combo-list { position: fixed; z-index: 60; background: #fff; box-shadow: 0 4px 14px #0003; border: 1px solid #c0c6d1; max-height: 260px; overflow: auto; font: 12px var(--data); }
+.combo-row { display: grid; grid-template-columns: 1fr 70px 100px; gap: 8px; padding: 0 8px; height: 26px; align-items: center; cursor: default; border: 1px solid transparent; }
+.combo-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-row.head { font: 700 9px var(--ui); color: #fff; background: var(--head); height: 20px; }
+.combo-row.hi { background: #3f424e; color: #fff; border-color: #3f424e; }
+
+/* filtrul de perioadă (situații) */
+.periodbar { display: flex; align-items: center; gap: 6px; padding: 4px 0; font: 12px var(--ui); color: var(--text2); }
+.periodbar input, .periodbar select { height: 24px; border: 1px solid var(--line); background: #fff; padding: 0 6px; font: 12px var(--data); }
 
 @media (max-width: 1100px) {
   .tiles { grid-template-columns: repeat(3, 1fr); }
@@ -251,3 +272,12 @@ textarea { width: 100%; font: 12px Consolas, monospace; border: 1px solid var(--
   .sidebar, .topbar, .toolbar, .bottombar, .filterrow, .notice { display: none !important; }
   .grid-wrap { overflow: visible; }
 }
+
+/* panoul Detalii de lângă grila de sus: plățile facturii + verificarea față de contract */
+.pane.top.with-det { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 8px; }
+.pane.top > .col { min-height: 0; display: flex; flex-direction: column; }
+.pane.top > .detail { min-height: 0; }
+.pays-block { display: flex; flex-direction: column; flex: none; }
+.pays-block .grid-wrap { flex: none; max-height: 130px; }
+.pays-h { font: 12px var(--ui); color: var(--text2); background: var(--btn2); padding: 3px 8px; }
+.verif-block { display: flex; flex-direction: column; gap: 6px; }

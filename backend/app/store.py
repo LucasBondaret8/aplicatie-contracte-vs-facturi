@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "store.json"
-EMPTY = {"contracts": [], "invoices": [], "payments": []}
+EMPTY = {"contracts": [], "invoices": [], "payments": [], "suppliers": [], "opening": {"banca": 0, "casa": 0}}
 
 
 class Store:
@@ -15,6 +15,42 @@ class Store:
         self.path = path
         self.lock = threading.Lock()
         self.data = json.loads(path.read_text("utf-8")) if path.exists() else json.loads(json.dumps(EMPTY))
+        for k, v in EMPTY.items():
+            self.data.setdefault(k, json.loads(json.dumps(v)))
+
+    # furnizori: fișa cu cod, adresă, cont bancar; cei din contracte / facturi se adaugă automat
+    def sync_suppliers(self):
+        with self.lock:
+            sup = self.data["suppliers"]
+            known = {s["cui"] for s in sup}
+            names = {}
+            for c in self.data["contracts"]:
+                names.setdefault(c["supplier_cui"], c.get("supplier_name"))
+            for i in self.data["invoices"]:
+                names.setdefault(i["supplier_cui"], i.get("supplier_name"))
+            missing = [(cui, n) for cui, n in names.items() if cui and cui not in known]
+            for cui, name in missing:
+                sup.append({"id": uuid.uuid4().hex[:8], "cod": self._next_cod(), "name": name or cui, "cui": cui,
+                            "tara": "RO", "judet": "", "localitate": "", "adresa": "", "iban": "", "banca": ""})
+            if missing:
+                self.save()
+
+    def _next_cod(self) -> str:
+        return f"{max([int(s['cod']) for s in self.data['suppliers'] if str(s.get('cod', '')).isdigit()] or [0]) + 1:05d}"
+
+    def upsert_supplier(self, s: dict) -> dict:
+        with self.lock:
+            s.setdefault("id", uuid.uuid4().hex[:8])
+            if not s.get("cod"):
+                s["cod"] = self._next_cod()
+            self.data["suppliers"] = [x for x in self.data["suppliers"] if x["id"] != s["id"]] + [s]
+            self.save()
+            return s
+
+    def delete_supplier(self, sid: str):
+        with self.lock:
+            self.data["suppliers"] = [x for x in self.data["suppliers"] if x["id"] != sid]
+            self.save()
 
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)

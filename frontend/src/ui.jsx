@@ -1,6 +1,6 @@
 // Componente de bază: zona de lucru, bare de butoane, grile, ferestre de dialog.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Cancel, Chevrons, Pencil, Plus, Save, Trash } from "./icons.jsx";
+import { Cancel, Caret, Check, Chevrons, Pencil, Plus, Save, Trash } from "./icons.jsx";
 
 /** Scurtătură ALT + literă (ca în programele de contabilitate). */
 export function useAlt(letter, fn, enabled = true) {
@@ -50,7 +50,7 @@ export function TBtn({ icon, label, alt, onClick, disabled, title, active, class
 }
 
 /** Bara „Adaug / Modific / Șterg” de deasupra unei grile. În modul de editare devine „Adaug / Salvez / Renunț”. */
-export function LinkBar({ onAdd, onEdit, onDelete, keys = "AMS", tools, right, detalii, editing }) {
+export function LinkBar({ onAdd, onEdit, onDelete, keys = "AMS", tools, right, detalii, editing, detaliiLabel }) {
   return (
     <div className="toolbar">
       <div className="tgroup">
@@ -66,7 +66,7 @@ export function LinkBar({ onAdd, onEdit, onDelete, keys = "AMS", tools, right, d
       {tools}
       <span className="grow" />
       {right}
-      {detalii && <TBtn icon={<Chevrons />} label="Detalii" onClick={detalii.toggle} active={detalii.on} />}
+      {detalii && <TBtn icon={<Chevrons />} label={detalii.on ? "Listă" : "Detalii"} onClick={detalii.toggle} />}
     </div>
   );
 }
@@ -180,6 +180,7 @@ export function Grid({ columns, rows, getId = (r) => r.id, selected, onSelect, o
   );
 }
 
+/** Fereastră de dialog: titlu subliniat, câmpuri, butoane Accept / Renunț jos. Esc = Renunț. */
 export function Modal({ title, onClose, children, footer, width = 560 }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -187,16 +188,33 @@ export function Modal({ title, onClose, children, footer, width = 560 }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="modal-bg">
+    <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ width }}>
-        <div className="modal-h">
-          <span>{title}</span>
-          <button className="x" onClick={onClose} title="Închide (Esc)">✕</button>
-        </div>
+        <div className="modal-h">{title}</div>
         <div className="modal-b">{children}</div>
         {footer && <div className="modal-f">{footer}</div>}
       </div>
     </div>
+  );
+}
+
+/** Butoanele standard ale unui dialog: Accept (ALT+A) și Renunț (ALT+R). */
+export function DialogButtons({ onAccept, onCancel, acceptLabel = "Accept", disabled, extra }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!e.altKey) return;
+      if (e.key.toLowerCase() === "a" && !disabled) { e.preventDefault(); onAccept(); }
+      if (e.key.toLowerCase() === "r") { e.preventDefault(); onCancel(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  return (
+    <>
+      {extra}
+      <button className="dbtn" onClick={onAccept} disabled={disabled} title="ALT + A"><Check /><span><u>{acceptLabel[0]}</u>{acceptLabel.slice(1)}</span></button>
+      <button className="dbtn" onClick={onCancel} title="ALT + R"><Cancel /><span><u>R</u>enunț</span></button>
+    </>
   );
 }
 
@@ -206,5 +224,48 @@ export function Field({ label, children, wide }) {
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+/**
+ * Listă derulantă cu căutare, ca în programul de contabilitate: câmp + ▾, sub el un tabel de opțiuni
+ * (ex. Denumire · Cod · Cod fiscal), opțiunea activă pe fond închis. Săgeți / Enter / Esc.
+ */
+export function Combo({ value, onType, onPick, options, placeholder, width = 560, className = "cell-in", autoFocus, cols }) {
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const ref = useRef();
+  const [pos, setPos] = useState(null);
+  const text = (value || "").toLowerCase();
+  const shown = options.filter((o) => !text || o.cols.some((c) => String(c).toLowerCase().includes(text))).slice(0, 50);
+  const show = () => {
+    const r = ref.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 1 });
+    setOpen(true);
+  };
+  const pick = (o) => { onPick(o); setOpen(false); };
+  const onKey = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); if (!open) show(); setHi((h) => Math.min(shown.length - 1, h + 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(0, h - 1)); }
+    else if (e.key === "Enter" && open && shown[hi]) { e.preventDefault(); pick(shown[hi]); }
+    else if (e.key === "Escape" && open) { e.preventDefault(); e.stopPropagation(); setOpen(false); }
+  };
+  return (
+    <span className="combo" ref={ref}>
+      <input className={className} value={value ?? ""} placeholder={placeholder} autoFocus={autoFocus}
+        onChange={(e) => { onType(e.target.value); setHi(0); if (!open) show(); }}
+        onFocus={show} onBlur={() => setTimeout(() => setOpen(false), 120)} onKeyDown={onKey} />
+      <button type="button" tabIndex={-1} className="combo-caret" onMouseDown={(e) => { e.preventDefault(); open ? setOpen(false) : (ref.current.querySelector("input").focus(), show()); }}><Caret /></button>
+      {open && pos && shown.length > 0 && (
+        <div className="combo-list" style={{ left: pos.left, top: pos.top, width }}>
+          {cols && <div className="combo-row head">{cols.map((c, i) => <span key={i}>{c}</span>)}</div>}
+          {shown.map((o, i) => (
+            <div key={o.key} className={`combo-row${i === hi ? " hi" : ""}`} onMouseDown={(e) => { e.preventDefault(); pick(o); }} onMouseEnter={() => setHi(i)}>
+              {o.cols.map((c, j) => <span key={j}>{c}</span>)}
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
   );
 }

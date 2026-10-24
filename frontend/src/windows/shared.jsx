@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { api, daysBetween, dmy, lei } from "../api.js";
-import { Btn, Field, Modal } from "../ui.jsx";
+import { DialogButtons, Field, Modal } from "../ui.jsx";
 
 export const STATUS_LABEL = { ok: "Corect", warning: "Atenție", error: "Eroare" };
 
-/** Furnizorii = toți CUI-urile din contracte și facturi, cu rulaje. */
+/** Furnizorii (fișele din Furnizori), cu rulaje calculate din facturi și plăți. */
 export function partners(ctx) {
   const map = {};
-  const get = (cui, name) => (map[cui] ||= { cui, name, contracts: 0, invoices: 0, rulaj: 0, paid: 0, errors: 0, warnings: 0 });
+  for (const s of ctx.data.suppliers || []) map[s.cui] = { ...s, contracts: 0, invoices: 0, rulaj: 0, paid: 0, errors: 0, warnings: 0 };
+  const get = (cui, name) => (map[cui] ||= { cui, name, cod: "", contracts: 0, invoices: 0, rulaj: 0, paid: 0, errors: 0, warnings: 0 });
   for (const c of ctx.data.contracts) get(c.supplier_cui, c.supplier_name).contracts++;
   for (const r of ctx.analysis?.results || []) {
     const p = get(r.invoice.supplier_cui, r.invoice.supplier_name);
-    p.name ||= r.invoice.supplier_name;
     p.invoices++;
     p.rulaj += r.invoice.total_with_vat;
     p.paid += r.paid;
@@ -21,14 +21,19 @@ export function partners(ctx) {
   return Object.values(map).map((p) => ({ ...p, sold: Math.round((p.rulaj - p.paid) * 100) / 100 }));
 }
 
+export const supplierOf = (ctx, cui) => (ctx.data.suppliers || []).find((s) => s.cui === cui);
 export function supplierName(ctx, cui) {
-  return ctx.data.contracts.find((c) => c.supplier_cui === cui)?.supplier_name
+  return supplierOf(ctx, cui)?.name || ctx.data.contracts.find((c) => c.supplier_cui === cui)?.supplier_name
     || ctx.data.invoices.find((i) => i.supplier_cui === cui)?.supplier_name || cui;
 }
+export const analitic = (ctx, cui) => `401.${supplierOf(ctx, cui)?.cod || "00000"}`;
+/** Opțiunile listei derulante de furnizori: Denumire · Cod · Cod fiscal. */
+export const supplierOptions = (ctx) => partners(ctx).sort((a, b) => a.name.localeCompare(b.name, "ro"))
+  .map((p) => ({ key: p.cui, cols: [p.name, p.cod, p.cui], p }));
 
-/** Panoul „Detalii”: factura comparată cu contractul + alertele. */
-export function CompareDetail({ r, contract }) {
-  if (!r) return <div className="detail muted center">Selectează o factură.</div>;
+/** Verificarea față de contract (panoul din dreapta). */
+export function CompareDetail({ r, contract, compact }) {
+  if (!r) return <div className="muted">Selectează o factură.</div>;
   const inv = r.invoice;
   const main = inv.lines.find((l) => !/penalit/i.test(l.description)) || inv.lines[0] || {};
   const codes = new Set(r.alerts.map((a) => a.code));
@@ -43,8 +48,8 @@ export function CompareDetail({ r, contract }) {
       contract.late_penalty_pct_per_day ? `${contract.late_penalty_pct_per_day}%/zi` : "nu se aplică", codes.has("PENALTY")],
   ] : [];
   return (
-    <div className="detail">
-      <div className="detail-h">Verificare factură {inv.number} <span className={`badge ${r.status}`}>{STATUS_LABEL[r.status]}</span></div>
+    <div className="verif-block">
+      <div className="detail-h">Verificare față de contract <span className={`badge ${r.status}`}>{STATUS_LABEL[r.status]}</span></div>
       {contract ? (
         <table className="cmp">
           <thead><tr><th></th><th>Pe factură</th><th>Contract {contract.contract_number}</th></tr></thead>
@@ -56,7 +61,7 @@ export function CompareDetail({ r, contract }) {
         {r.alerts.map((a, i) => (
           <div key={i} className={`alert ${a.severity}`}>
             <b>{a.title}</b>{a.amount > 0 && <span className="amt">{lei(a.amount)} lei</span>}
-            <div>{a.detail}</div>
+            {!compact && <div>{a.detail}</div>}
           </div>
         ))}
       </div>
@@ -64,8 +69,18 @@ export function CompareDetail({ r, contract }) {
   );
 }
 
+const PAY_ACCOUNTS = [["5311", "casa"], ["5121", "banca"]];
+const defaultAccount = () => { try { return localStorage.getItem("bvs-cont-plata") || "5121"; } catch { return "5121"; } };
+
+/**
+ * Fereastra „Plată”, ca în programul de contabilitate: Data, Cont plată, Suma plătită, Nr. doc plată.
+ * Când factura nu e dată (adăugare din jurnal / registru), cere întâi furnizorul și factura.
+ */
 export function PaymentModal({ ctx, initial, onClose }) {
-  const [p, setP] = useState({ method: "banca", date: ctx.today, doc: "", ...initial });
+  const fixed = !!(initial.invoice_number && initial.supplier_cui && !initial.id);
+  const [p, setP] = useState({ date: ctx.today, doc: "", ...initial });
+  const [cont, setCont] = useState(initial.method ? (initial.method === "casa" ? "5311" : "5121") : defaultAccount());
+  const [remember, setRemember] = useState(false);
   const supplierInvoices = (ctx.analysis?.results || []).filter((r) => r.invoice.supplier_cui === p.supplier_cui);
   const set = (k) => (e) => setP((x) => ({ ...x, [k]: e.target.value }));
   const pickInvoice = (e) => {
@@ -73,32 +88,40 @@ export function PaymentModal({ ctx, initial, onClose }) {
     setP((x) => ({ ...x, invoice_number: e.target.value, amount: r ? Math.max(0, r.invoice.total_with_vat - r.paid).toFixed(2) : x.amount }));
   };
   const save = async () => {
-    if (await ctx.run("Salvare plată", () => api.savePayment(p))) onClose();
+    if (remember) try { localStorage.setItem("bvs-cont-plata", cont); } catch { /* fără stocare locală */ }
+    const method = PAY_ACCOUNTS.find((a) => a[0] === cont)[1];
+    if (await ctx.run("Plată", () => api.savePayment({ ...p, method }))) onClose();
   };
   return (
-    <Modal title={p.id ? "Modific plată" : "Adaug plată"} onClose={onClose}
-      footer={<><Btn className="primary" onClick={save} disabled={!p.supplier_cui || !p.invoice_number || !p.amount}>Salvez</Btn><Btn onClick={onClose}>Renunț</Btn></>}>
-      <div className="form">
-        <Field label="Tip"><select value={p.method} onChange={set("method")}><option value="banca">B – Bancă</option><option value="casa">C – Casă</option></select></Field>
-        <Field label="Nr. document"><input value={p.doc} onChange={set("doc")} placeholder="OP / chitanță" /></Field>
+    <Modal title="Plată" onClose={onClose} width={fixed ? 260 : 340}
+      footer={<DialogButtons onAccept={save} onCancel={onClose} disabled={!p.supplier_cui || !p.invoice_number || !p.amount} />}>
+      <div className="vform">
+        {!fixed && <>
+          <Field label="Furnizor">
+            <select value={p.supplier_cui || ""} onChange={(e) => setP((x) => ({ ...x, supplier_cui: e.target.value, invoice_number: "" }))}>
+              <option value="" />
+              {partners(ctx).sort((a, b) => a.name.localeCompare(b.name, "ro")).map((s) => <option key={s.cui} value={s.cui}>{s.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Factura">
+            <select value={p.invoice_number || ""} onChange={pickInvoice}>
+              <option value="" />
+              {supplierInvoices.map((r) => (
+                <option key={r.invoice.id} value={r.invoice.number}>{r.invoice.number} / {dmy(r.invoice.issue_date)} – neachitat {lei(r.invoice.total_with_vat - r.paid)}</option>
+              ))}
+            </select>
+          </Field>
+        </>}
+        {fixed && <div className="muted">Factura {p.invoice_number} · {supplierName(ctx, p.supplier_cui)}</div>}
         <Field label="Data"><input type="date" value={p.date} onChange={set("date")} /></Field>
-        <Field label="Furnizor">
-          <select value={p.supplier_cui || ""} onChange={(e) => setP((x) => ({ ...x, supplier_cui: e.target.value, invoice_number: "" }))}>
-            <option value="">—</option>
-            {partners(ctx).map((s) => <option key={s.cui} value={s.cui}>{s.name}</option>)}
+        <Field label="Cont plată">
+          <select value={cont} onChange={(e) => setCont(e.target.value)}>
+            {PAY_ACCOUNTS.map(([c, m]) => <option key={c} value={c}>{c}{m === "casa" ? " – Casa în lei" : " – Conturi la bănci în lei"}</option>)}
           </select>
         </Field>
-        <Field label="Factura">
-          <select value={p.invoice_number || ""} onChange={pickInvoice}>
-            <option value="">—</option>
-            {supplierInvoices.map((r) => (
-              <option key={r.invoice.id} value={r.invoice.number}>
-                {r.invoice.number} din {dmy(r.invoice.issue_date)} – neachitat {lei(r.invoice.total_with_vat - r.paid)}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Suma"><input type="number" step="0.01" value={p.amount ?? ""} onChange={set("amount")} /></Field>
+        <label className="field check"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Reține ca implicit</label>
+        <Field label="Suma plătită"><input type="number" step="0.01" className="r" value={p.amount ?? ""} onChange={set("amount")} autoFocus /></Field>
+        <Field label="Nr. doc plată"><input value={p.doc} onChange={set("doc")} /></Field>
       </div>
     </Modal>
   );
@@ -114,13 +137,13 @@ const CONTRACT_FIELDS = [
   ["unit", "UM", "text"],
   ["quantity_per_period", "Cantitate / lună", "number"],
   ["vat_rate", "Cotă TVA %", "number"],
-  ["billing_period", "Periodicitate", ["lunar", "trimestrial", "anual", "ocazional"]],
-  ["payment_term_days", "Termen plată (zile)", "number"],
-  ["late_penalty_pct_per_day", "Penalități % / zi", "number"],
+  ["billing_period", "Recurență", ["lunar", "trimestrial", "anual", "ocazional"]],
+  ["payment_term_days", "Zile scadență", "number"],
+  ["late_penalty_pct_per_day", "Penalizări % / zi", "number"],
   ["indexation_type", "Indexare", ["none", "IPC", "fix"]],
   ["indexation_max_pct", "Plafon indexare %", "number"],
   ["indexation_month", "Luna indexării", "number"],
-  ["expense_account", "Cont cheltuială", "text"],
+  ["expense_account", "Cont debit", "text"],
   ["start_date", "Valabil de la", "date"],
   ["end_date", "Valabil până la", "date"],
   ["service_keywords", "Cuvinte pe factură", "list", true],
@@ -156,16 +179,15 @@ export function ContractModal({ ctx, initial, onClose }) {
   };
 
   return (
-    <Modal title={`Contract furnizor${source ? ` · ${source === "claude" ? "completat cu Claude" : source === "heuristic" ? "completat automat" : "salvat"}` : ""}`}
-      onClose={onClose} width={780}
-      footer={<><Btn className="primary" onClick={save} disabled={!has}>Salvez</Btn><Btn onClick={onClose}>Renunț</Btn></>}>
+    <Modal title={`Contract furnizor${source ? ` · ${source === "claude" ? "completat cu Claude" : source === "heuristic" ? "completat automat" : ""}` : ""}`}
+      onClose={onClose} width={780} footer={<DialogButtons onAccept={save} onCancel={onClose} disabled={!has} />}>
       {!initial && (
         <div className="upload">
           <label className="bbtn primary">
             {busy ? "Se citește contractul..." : "Încarcă contractul (PDF / TXT)..."}
             <input type="file" accept=".pdf,.txt" hidden disabled={busy} onChange={(e) => e.target.files[0] && upload(e.target.files[0])} />
           </label>
-          <span className="muted">AI-ul completează fișa; tu o verifici înainte de salvare.</span>
+          <span className="muted">AI-ul completează fișa; tu o verifici înainte de Accept.</span>
         </div>
       )}
       {warn && <div className="alert warning">{warn}</div>}
@@ -193,11 +215,11 @@ export function ContractModal({ ctx, initial, onClose }) {
 export function EmailModal({ email, onClose }) {
   const [copied, setCopied] = useState(false);
   const text = `Subiect: ${email.subject}\n\n${email.body}`;
+  const copy = () => navigator.clipboard.writeText(text).then(() => setCopied(true));
   return (
     <Modal title="Contestație către furnizor" onClose={onClose} width={680}
-      footer={<><Btn onClick={() => navigator.clipboard.writeText(text).then(() => setCopied(true))}>{copied ? "Copiat ✓" : "Copiez textul"}</Btn>
-        <Btn onClick={() => window.open(`mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`)}>Deschid în email</Btn>
-        <Btn onClick={onClose}>Închid</Btn></>}>
+      footer={<DialogButtons acceptLabel={copied ? "Copiat ✓" : "Accept – copiez textul"} onAccept={copy} onCancel={onClose}
+        extra={<button className="dbtn" onClick={() => window.open(`mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`)}>Deschid în email</button>} />}>
       <textarea readOnly value={text} rows={18} />
     </Modal>
   );
