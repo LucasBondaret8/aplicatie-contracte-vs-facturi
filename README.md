@@ -56,7 +56,16 @@ Scurtături:
 | Confirmare livrări | pentru o lună, ce s-a primit efectiv pe fiecare contract (livrat / parțial / nelivrat, cantitate sau licențe folosite, document); ALT+L / ALT+P / ALT+N; factura se reverifică pe loc |
 | Verificare | toate neconcordanțele, cu suma de recuperat |
 
-Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contabile, Declarații, Salarii...) apar dezactivate: ele rămân în programul de contabilitate al clientului. Interfața imită stilul general, nu copiază numele, logo-ul sau iconițele altui produs.
+**Toate opțiunile din meniu funcționează:**
+- *Fișiere*: Furnizori, Plan conturi (cu analiticele 401.xxxxx), Articole (din liniile facturilor), Tipuri de articole; Clienți, Agenți, Gestiuni, Grupe, Filiale, Salariați – liste editabile în grilă.
+- *Operații*: Intrări, e-Facturi (SPV), Registru de casă, Jurnal de bancă, **Articole contabile** (generate automat: `% = 401.xxxxx` pentru facturi cu 6xx / 4426, `401.xxxxx = 5121 / 5311` pentru plăți), **Închidere lună** (ce mai e de rezolvat + validarea facturilor corecte).
+- *Situații*: **Fișe conturi, Balanțe** (sintetică / analitică, debit = credit), **Carte mare, Registru jurnal, Jurnal de cumpărări** (baze și TVA pe cote), Situație furnizori, Situație aprovizionări, Fișe articole, raport neconcordanțe.
+- *Diverse*: Contracte furnizori, Confirmare livrări, Verificare, Import date, Acționari, Mașini.
+- *Administrare*: Date firmă, Numere și serii, Utilizatori, **Salvare / restaurare** (fișier .json), ștergere date.
+- Operațiile din contabilitatea completă care nu țin de facturile primite (Ieșiri, salarii, declarații D406/D205/Intrastat, producție, stocuri, imobilizări, deconturi) deschid un ecran care explică faptul că se fac în programul de contabilitate.
+- **Interval** (sus): de la începutul anului până în *prezent*, luna curentă, luna trecută, anul trecut sau toate datele; se aplică în Intrări și în situații.
+
+Contabilitatea calculată aici e partea de cumpărări (facturi primite și plăți). Interfața imită stilul general, nu copiază numele, logo-ul sau iconițele altui produs.
 
 ## Cum funcționează
 

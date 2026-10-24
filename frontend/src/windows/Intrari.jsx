@@ -30,8 +30,9 @@ export default function Intrari({ ctx, params, onClose }) {
     const i = r.invoice;
     const has = (v, s) => String(v).toLowerCase().includes(s.toLowerCase());
     return has(nrInt[i.id], f.nrInt) && has(i.number, f.nr) && has(i.supplier_cui, f.cod) && has(i.supplier_name, f.furnizor)
-      && (!q || has(`${i.number} ${i.supplier_name} ${i.supplier_cui}`, q)) && (!f.probleme || r.status !== "ok") && (!f.noi || i.new);
-  }), [results, f, q, nrInt]);
+      && (!q || has(`${i.number} ${i.supplier_name} ${i.supplier_cui}`, q)) && (!f.probleme || r.status !== "ok") && (!f.noi || i.new)
+      && i.issue_date >= ctx.interval.from && i.issue_date <= ctx.interval.to; // intervalul de lucru din meniu
+  }), [results, f, q, nrInt, ctx.interval]);
   const sel = draft ? DRAFT : selState ?? [...rows].sort((a, b) => a.invoice.issue_date.localeCompare(b.invoice.issue_date))[0]?.invoice.id;
   const cur = results.find((r) => r.invoice.id === sel);
   const contract = cur && ctx.cmap[cur.contract_id];

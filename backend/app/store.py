@@ -7,7 +7,9 @@ import uuid
 from pathlib import Path
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "store.json"
-EMPTY = {"contracts": [], "invoices": [], "payments": [], "suppliers": [], "deliveries": [], "opening": {"banca": 0, "casa": 0}}
+EMPTY = {"contracts": [], "invoices": [], "payments": [], "suppliers": [], "deliveries": [], "opening": {"banca": 0, "casa": 0},
+         "lists": {}, "company": {"name": "Demo Distribuție SRL", "cui": "40000001", "regcom": "J40/1234/2020",
+                                  "adresa": "Str. Exemplului nr. 10, București", "iban": "", "banca": "", "tva": True}}
 
 
 class Store:
@@ -46,6 +48,27 @@ class Store:
             self.data["suppliers"] = [x for x in self.data["suppliers"] if x["id"] != s["id"]] + [s]
             self.save()
             return s
+
+    def replace_all(self, data: dict):
+        with self.lock:
+            self.data = data
+            for k, v in EMPTY.items():
+                self.data.setdefault(k, json.loads(json.dumps(v)))
+            self.save()
+
+    # nomenclatoare simple (clienți, agenți, gestiuni...)
+    def upsert_list_item(self, name: str, item: dict) -> dict:
+        with self.lock:
+            items = self.data["lists"].setdefault(name, [])
+            item.setdefault("id", uuid.uuid4().hex[:8])
+            self.data["lists"][name] = [x for x in items if x["id"] != item["id"]] + [item]
+            self.save()
+            return item
+
+    def delete_list_item(self, name: str, iid: str):
+        with self.lock:
+            self.data["lists"][name] = [x for x in self.data["lists"].get(name, []) if x["id"] != iid]
+            self.save()
 
     # confirmări de livrare: una pe (contract, lună)
     def upsert_delivery(self, d: dict) -> dict:

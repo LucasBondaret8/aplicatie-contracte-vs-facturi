@@ -128,6 +128,38 @@ def test_delivery_confirmation_changes_verification(client):
         assert client.post("/api/deliveries", json=bad).status_code == 400
 
 
+def test_ledger_balances(client):
+    state = client.get("/api/state").json()
+    entries = client.get("/api/ledger").json()["entries"]
+    assert [e["nr"] for e in entries] == list(range(1, len(entries) + 1))
+    debit = lambda acc: sum(e["amount"] for e in entries if e["debit"].startswith(acc))
+    credit = lambda acc: sum(e["amount"] for e in entries if e["credit"].startswith(acc))
+    invoices = sum(i["total_with_vat"] for i in state["invoices"])
+    paid = sum(p["amount"] for p in state["payments"])
+    assert credit("401") == pytest.approx(invoices, abs=0.05)  # facturile, cu TVA
+    assert debit("401") == pytest.approx(paid, abs=0.05)  # plățile
+    assert debit("4426") == pytest.approx(sum(i["vat_total"] for i in state["invoices"]), abs=0.05)
+    assert debit("612") > 0 and debit("6581") == pytest.approx(500)  # chirie; penalitățile TSP-2026-09
+    imn = next(s for s in state["suppliers"] if s["cui"] == "31415926")
+    assert all(e["credit"] == f"401.{imn['cod']}" for e in entries if e["doc"] == "Factura IMN-2026-01")
+
+
+def test_lists_company_backup_restore(client):
+    c = client.post("/api/lists/clienti", json={"denumire": "Client Test SRL", "cui": "123"}).json()
+    assert client.get("/api/state").json()["lists"]["clienti"][0]["denumire"] == "Client Test SRL"
+    assert client.post("/api/lists/nu-exista", json={"x": 1}).status_code == 404
+    assert client.post("/api/lists/clienti", json={"denumire": " "}).status_code == 400
+    client.delete(f"/api/lists/clienti/{c['id']}")
+    assert client.get("/api/state").json()["lists"]["clienti"] == []
+    assert client.post("/api/company", json={"name": "Firma Mea SRL", "cui": "RO99"}).json()["cui"] == "99"
+    backup = client.get("/api/backup").content
+    client.post("/api/reset")
+    assert client.get("/api/state").json()["invoices"] == []
+    r = client.post("/api/restore", files={"file": ("salvare.json", backup)}).json()
+    assert r["invoices"] == 45 and client.get("/api/state").json()["company"]["name"] == "Firma Mea SRL"
+    assert client.post("/api/restore", files={"file": ("rau.json", b"{}")}).status_code == 400
+
+
 def test_manual_invoice_requires_lines(client):
     r = client.post("/api/invoices/manual", json={"number": "1", "supplier_cui": "1", "issue_date": "2026-10-01", "lines": []})
     assert r.status_code == 400

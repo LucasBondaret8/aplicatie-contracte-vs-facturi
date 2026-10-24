@@ -15,6 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response
 
+from .accounting import journal_entries, opening_entries
 from .anaf import AnafError, AnafSource, current_source
 from .efactura import EFacturaError, normalize_cui, parse_upload
 from .extract import extract_contract
@@ -56,6 +57,65 @@ def today() -> date:
 def state():
     store.sync_suppliers()
     return store.data
+
+
+# ---------- contabilitate (cumpărări), nomenclatoare, firmă, salvare ----------
+
+@app.get("/api/ledger")
+def ledger():
+    """Notele contabile generate din facturi și plăți, plus soldurile inițiale de casă / bancă."""
+    # soldurile de la începutul anului, datate în ultima zi a anului trecut (apar la „sold inițial”)
+    return {"entries": journal_entries(store.data), "opening": opening_entries(store.data, f"{today().year - 1}-12-31")}
+
+
+LISTS = {"clienti", "agenti", "gestiuni", "grupe", "filiale", "salariati", "masini", "actionari", "utilizatori", "serii"}
+
+
+@app.post("/api/lists/{name}")
+def lists_save(name: str, item: dict):
+    if name not in LISTS:
+        raise HTTPException(404, "Listă inexistentă")
+    if not any(str(v).strip() for k, v in item.items() if k != "id"):
+        raise HTTPException(400, "Completează cel puțin un câmp.")
+    return store.upsert_list_item(name, item)
+
+
+@app.delete("/api/lists/{name}/{iid}")
+def lists_delete(name: str, iid: str):
+    if name not in LISTS:
+        raise HTTPException(404, "Listă inexistentă")
+    store.delete_list_item(name, iid)
+    return {"ok": True}
+
+
+@app.post("/api/company")
+def company_save(c: dict):
+    c["cui"] = normalize_cui(c.get("cui"))
+    if not str(c.get("name") or "").strip():
+        raise HTTPException(400, "Completează denumirea firmei.")
+    store.data["company"] = c
+    store.save()
+    return c
+
+
+@app.get("/api/backup")
+def backup():
+    """Salvare: toate datele aplicației într-un fișier JSON."""
+    return Response(json.dumps(store.data, ensure_ascii=False, indent=1), media_type="application/json",
+                    headers={"Content-Disposition": f"attachment; filename=bill-vs-signed-salvare-{today().isoformat()}.json"})
+
+
+@app.post("/api/restore")
+async def restore(file: UploadFile = File(...)):
+    """Restaurare dintr-un fișier de salvare."""
+    try:
+        data = json.loads((await file.read()).decode("utf-8-sig"))
+    except (ValueError, UnicodeDecodeError) as e:
+        raise HTTPException(400, "Fișierul nu e o salvare Bill vs Signed (JSON).") from e
+    if not isinstance(data, dict) or not all(isinstance(data.get(k), list) for k in ("contracts", "invoices", "payments")):
+        raise HTTPException(400, "Fișierul nu e o salvare Bill vs Signed: lipsesc contractele, facturile sau plățile.")
+    store.replace_all(data)
+    return {"contracts": len(data["contracts"]), "invoices": len(data["invoices"]), "payments": len(data["payments"])}
 
 
 # ---------- furnizori ----------
