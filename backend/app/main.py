@@ -117,7 +117,8 @@ async def payments_import(file: UploadFile = File(...)):
     rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
     try:
         payments = [{"invoice_number": r["numar_factura"].strip(), "supplier_cui": normalize_cui(r["cui_furnizor"]),
-                     "date": r["data"].strip(), "amount": float(r["suma"].replace(",", "."))} for r in rows]
+                     "date": r["data"].strip(), "amount": float(r["suma"].replace(",", ".")),
+                     "method": (r.get("metoda") or "banca").strip().lower()} for r in rows]
     except KeyError as e:
         raise HTTPException(400, f"Coloană lipsă în CSV: {e}") from e
     store.set_payments(payments)
@@ -196,7 +197,7 @@ def demo_load():
     store.add_invoices(invoices)
     rows = list(csv.DictReader(io.StringIO((DEMO_DIR / "plati.csv").read_text("utf-8-sig")), delimiter=";"))
     store.set_payments([{"invoice_number": r["numar_factura"], "supplier_cui": normalize_cui(r["cui_furnizor"]),
-                         "date": r["data"], "amount": float(r["suma"])} for r in rows])
+                         "date": r["data"], "amount": float(r["suma"]), "method": r.get("metoda") or "banca"} for r in rows])
     return {"ok": True}
 
 

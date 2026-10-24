@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, dmy } from "./api.js";
-import { Big } from "./icons.jsx";
+import { api } from "./api.js";
+import { Bell, Book, Caret, Contrast, Logo, Logout } from "./icons.jsx";
 import Intrari from "./windows/Intrari.jsx";
 import Plati from "./windows/Plati.jsx";
 import Furnizori from "./windows/Furnizori.jsx";
@@ -9,19 +9,26 @@ import Verificare from "./windows/Verificare.jsx";
 import Scadentar from "./windows/Scadentar.jsx";
 
 const WINDOWS = {
-  intrari: Intrari, plati: Plati, furnizori: Furnizori, contracte: Contracte, verificare: Verificare, scadentar: Scadentar,
+  intrari: [Intrari, "Intrări"],
+  furnizori: [Furnizori, "Furnizori"],
+  banca: [Plati, "Jurnal de bancă"],
+  casa: [Plati, "Registru de casă"],
+  contracte: [Contracte, "Contracte furnizori"],
+  verificare: [Verificare, "Verificare contracte"],
+  scadentar: [Scadentar, "Situație furnizori"],
 };
 
-// Meniul păstrează structura obișnuită a programelor de contabilitate; ce nu ține de verificarea
-// facturilor rămâne în programul de contabilitate și apare dezactivat.
-const OFF = "Rămâne în programul de contabilitate – nu face parte din Bill vs Signed";
+// Structura meniului urmează programele de contabilitate obișnuite. Ce nu ține de verificarea
+// facturilor primite rămâne în programul de contabilitate și apare dezactivat.
+const OFF = "Rămâne în programul de contabilitate";
 
 export default function App() {
   const [data, setData] = useState({ contracts: [], invoices: [], payments: [] });
   const [analysis, setAnalysis] = useState(null);
-  const [win, setWin] = useState(null); // {type, params}
-  const [msg, setMsg] = useState("Gata");
+  const [win, setWin] = useState({ type: "intrari", params: {}, key: 0 });
+  const [msg, setMsg] = useState("");
   const [menu, setMenu] = useState(null);
+  const [sub, setSub] = useState(null);
   const invInput = useRef();
   const payInput = useRef();
 
@@ -32,9 +39,9 @@ export default function App() {
   }, []);
 
   useEffect(() => { refresh().catch((e) => setMsg(`Serverul nu răspunde: ${e.message}`)); }, [refresh]);
+  useEffect(() => { if (msg) { const t = setTimeout(() => setMsg(""), 6000); return () => clearTimeout(t); } }, [msg]);
 
   const run = useCallback(async (label, fn) => {
-    setMsg(`${label}...`);
     try {
       const out = await fn();
       await refresh();
@@ -47,101 +54,126 @@ export default function App() {
     }
   }, [refresh]);
 
-  const open = useCallback((type, params = {}) => { setMenu(null); setWin({ type, params, key: Date.now() }); }, []);
-  const close = useCallback(() => setWin(null), []);
+  const open = useCallback((type, params = {}) => { setMenu(null); setSub(null); setWin({ type, params, key: Date.now() }); }, []);
+  const close = useCallback(() => setWin({ type: "intrari", params: {}, key: Date.now() }), []);
 
   const cmap = useMemo(() => Object.fromEntries(data.contracts.map((c) => [c.id, c])), [data.contracts]);
   const company = data.invoices[0]?.customer_name || "Demo Distribuție SRL";
   const today = analysis?.summary.today;
+  const problems = (analysis?.summary.error || 0) + (analysis?.summary.warning || 0) + (analysis?.summary.missing || 0);
 
   const importInvoices = () => invInput.current.click();
   const importPayments = () => payInput.current.click();
+  const loadDemo = () => run("Date demo", async () => { await api.loadDemo(); open("intrari"); return "Date demo încărcate"; });
   const ctx = { data, analysis, cmap, refresh, run, open, setMsg, today, importInvoices, importPayments };
 
+  // [eticheta, acțiune | null, scurtătură, submeniu]
   const menus = [
     ["Fișiere", [
-      ["Furnizori", () => open("furnizori")],
-      ["Clienți", null], ["Articole", null], ["Gestiuni", null], ["Plan de conturi", null], "-",
-      ["Contracte furnizori", () => open("contracte")], "-",
-      ["Încarcă date demo", () => run("Date demo", async () => { await api.loadDemo(); open("verificare"); return "Date demo încărcate"; })],
-      ["Șterge toate datele", () => confirm("Ștergi contractele, facturile și plățile?") && run("Resetare", api.reset)],
+      ["Furnizori", () => open("furnizori"), "ALT+1"], ["Clienți", null, "ALT+2"], ["Agenți"], ["Plan conturi"], ["Gestiuni"],
+      ["Articole"], ["Tipuri de articole / servicii"], ["Grupe"], ["Filiale"], ["Salariați"],
     ]],
     ["Operații", [
-      ["Intrări (facturi furnizori)", () => open("intrari")],
-      ["Ieșiri (facturi clienți)", null], "-",
-      ["Plăți (casă, bancă)", () => open("plati")],
-      ["Note contabile", null], ["Imobilizări", null], ["Inventar", null],
+      ["Articole contabile"], ["Intrări", () => open("intrari"), "ALT+3"], ["Ieșiri", null, "ALT+4"],
+      ["e-Facturi", importInvoices], ["Intrări - valută"], ["Ieșiri - valută"], ["Imobilizări"], ["Transferuri"],
+      ["Bonuri de consum"], ["Producție"],
+      ["Alte operații cu stocuri", null, null, [["Inventariere"], ["Dare în folosință ob. inv."], ["Dezmembrări"], ["Operații speciale"], ["Reglări descărcare"]]],
+      "-",
+      ["Registru de casă", () => open("casa"), "ALT+5"], ["Deconturi", null, "ALT+8"], ["Jurnal de bancă", () => open("banca"), "ALT+6"],
+      ["Cecuri, BO emise/primite"], ["Registru de casă - Valută"], ["Deconturi - Valută"], ["Jurnal de bancă - Valută"],
+      "-", ["State salarii", null, "ALT+7"], ["Închidere lună"],
     ]],
-    ["Verificare", [
-      ["Verificare facturi față de contracte", () => open("verificare")], "-",
-      ["Import facturi e-Factura (XML / ZIP SPV)...", importInvoices],
-      ["Import extras bancar (CSV)...", importPayments],
+    ["Situații", [
+      ["Fișe conturi"], ["Balanțe"], ["Carte mare"], ["Jurnal de cumpărări / vânzări"],
+      ["Situație furnizori", () => open("scadentar")], ["Situație clienți"], ["Situație cecuri / bilete la ordin"],
+      ["Registru jurnal"], ["Registru inventar"], ["Bilanț"], ["Declarația 406 (SAF-T)"], "-",
+      ["Raport neconcordanțe contracte (XLS)", () => window.open("/api/report.csv")],
     ]],
-    ["Situații - Listări", [
-      ["Scadențar furnizori", () => open("scadentar")],
-      ["Fișă furnizor", () => open("furnizori")],
-      ["Raport neconcordanțe (Excel)", () => window.open("/api/report.csv")], "-",
-      ["Jurnal de cumpărări", null], ["Fișă cont", null], ["Balanță de verificare", null], ["Registru jurnal", null],
+    ["Diverse", [
+      ["Comenzi"], ["Situație comenzi"],
+      ["Contracte furnizori", () => open("contracte"), "ALT+9"],
+      ["Verificare facturi față de contracte", () => open("verificare"), "ALT+0"], "-",
+      ["Cheltuieli / Venituri în avans"],
+      ["Import date", null, null, [["Facturi e-Factura (XML / ZIP SPV)", importInvoices], ["Extras bancar (CSV)", importPayments], ["Date demo", loadDemo]]],
+      ["Diurne"], ["Situații manageriale"], ["Acționari"], ["Mașini"], ["e-Transport"], ["Declarația Intrastat"], ["Declarația 205"],
     ]],
-    ["Declarații", [["D300 - Decont TVA", null], ["D394", null], ["D406 - SAF-T", null], ["D112", null]]],
-    ["Salarii", [["Stat de plată", null], ["Revisal", null]]],
-    ["Administrare", [["Date firmă", null], ["Utilizatori", null], ["Salvare / restaurare", null]]],
-    ["Ajutor", [["Scurtături tastatură", () => alert(
-      "Ins – Adaug\nEnter / dublu-click – Modific / deschid\nDel – Șterg\nSăgeți – navigare în listă\nEsc – Ieșire din fereastră\nClick pe capul de coloană – sortare")],
-    ["Despre Bill vs Signed", () => alert("Bill vs Signed – verifică facturile primite prin RO e-Factura față de contractele semnate.")]]],
+    ["Administrare", [
+      ["Configurare salarii"], ["Numere și serii"], ["Utilizatori"], "-",
+      ["Șterge toate datele", () => confirm("Ștergi contractele, facturile și plățile?") && run("Resetare", api.reset)],
+      ["Despre", () => alert("Bill vs Signed – verifică facturile primite prin RO e-Factura față de contractele semnate.\n\nScurtături: ALT+1 Furnizori, ALT+3 Intrări, ALT+5 Casă, ALT+6 Bancă, ALT+9 Contracte, ALT+0 Verificare.\nÎn liste: ALT+A Adaug, ALT+M Modific, ALT+S Șterg, săgeți, Enter, Esc.")],
+    ]],
   ];
 
-  const W = win && WINDOWS[win.type];
+  // ALT + cifră deschide modulele, ca în programul de contabilitate
+  useEffect(() => {
+    const keys = { 1: "furnizori", 3: "intrari", 5: "casa", 6: "banca", 9: "contracte", 0: "verificare" };
+    const onKey = (e) => {
+      if (e.altKey && keys[e.key] && !document.querySelector(".modal-bg")) { e.preventDefault(); open(keys[e.key]); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const [W, title] = WINDOWS[win.type];
+  const renderItem = (it, i) => {
+    if (it === "-") return <hr key={i} />;
+    const [label, fn, key, children] = it;
+    if (children) {
+      return (
+        <div key={label} className="mi has-sub" onMouseEnter={() => setSub(label)}>
+          <span>{label}</span><span className="sub-caret">▸</span>
+          {sub === label && <div className="dropdown sub">{children.map(renderItem)}</div>}
+        </div>
+      );
+    }
+    return (
+      <button key={label} className="mi" disabled={!fn} title={fn ? "" : OFF} onMouseEnter={() => setSub(null)}
+        onClick={() => { setMenu(null); setSub(null); fn(); }}>
+        <span>{label}</span>{key && <span className="mi-key">{key}</span>}
+      </button>
+    );
+  };
 
   return (
-    <div className="app" onClick={() => menu && setMenu(null)}>
-      <div className="app-title">
-        <span className="app-logo">BvS</span>
-        Bill vs Signed · {company} · Luna de lucru: {today ? `${today.slice(5, 7)}/${today.slice(0, 4)}` : ""}
-      </div>
+    <div className="app" onClick={() => menu && (setMenu(null), setSub(null))}>
+      <aside className="sidebar">
+        <button className="side-logo" title="Verificare facturi" onClick={() => open("verificare")}>
+          <svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7.5" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+        <div className="side-title">{title.toUpperCase()}<span className="side-dash" /></div>
+        <div className="side-bottom">
+          <button title="Ajutor" onClick={() => menus[4][1].at(-1)[1]()}><Book /></button>
+          <button title="Temă"><Contrast /></button>
+          <span>RO</span>
+        </div>
+      </aside>
 
-      <div className="menubar">
-        {menus.map(([name, items]) => (
-          <div key={name} className={`menu${menu === name ? " open" : ""}`}>
-            <button onClick={(e) => { e.stopPropagation(); setMenu(menu === name ? null : name); }}
-              onMouseEnter={() => menu && setMenu(name)}>{name}</button>
-            {menu === name && (
-              <div className="dropdown" onClick={(e) => e.stopPropagation()}>
-                {items.map((it, i) => it === "-" ? <hr key={i} /> : (
-                  <button key={it[0]} disabled={!it[1]} title={it[1] ? "" : OFF}
-                    onClick={() => { setMenu(null); it[1](); }}>{it[0]}</button>
-                ))}
+      <div className="main">
+        <header className="topbar">
+          <Logo />
+          <nav className="menus">
+            {menus.map(([name, items]) => (
+              <div key={name} className={`menu${menu === name ? " open" : ""}`}>
+                <button onClick={(e) => { e.stopPropagation(); setSub(null); setMenu(menu === name ? null : name); }}
+                  onMouseEnter={() => menu && menu !== name && (setSub(null), setMenu(name))}>{name} <Caret /></button>
+                {menu === name && <div className="dropdown" onClick={(e) => e.stopPropagation()}>{items.map(renderItem)}</div>}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+            ))}
+            <div className="menu"><button title="Intervalul de lucru">Interval (01.01.2026 - 31.12.9999) <Caret /></button></div>
+          </nav>
+          <span className="grow" />
+          <span className="top-item"><Book /> {company}</span>
+          <button className="top-item bell" title={`${problems} probleme de verificat`} onClick={() => open("verificare")}>
+            <Bell />{problems > 0 && <span className="badge-n">{problems}</span>}
+          </button>
+          <span className="top-item">contabil@{company.split(" ")[0].toLowerCase()}.ro</span>
+          <button className="top-item" title="Ieșire" onClick={close}><Logout /></button>
+        </header>
 
-      <div className="bigbar">
-        <BigBtn icon={<Big.furnizori />} label="Furnizori" onClick={() => open("furnizori")} />
-        <BigBtn icon={<Big.contracte />} label="Contracte" onClick={() => open("contracte")} />
-        <span className="bb-sep" />
-        <BigBtn icon={<Big.intrari />} label="Intrări" onClick={() => open("intrari")} />
-        <BigBtn icon={<Big.plati />} label="Plăți" onClick={() => open("plati")} />
-        <span className="bb-sep" />
-        <BigBtn icon={<Big.verificare />} label="Verificare" onClick={() => open("verificare")} />
-        <BigBtn icon={<Big.scadentar />} label="Scadențar" onClick={() => open("scadentar")} />
-        <BigBtn icon={<Big.raport />} label="Raport" onClick={() => window.open("/api/report.csv")} />
-        <span className="bb-sep" />
-        <BigBtn icon={<Big.iesire />} label="Ieșire" onClick={close} />
-      </div>
+        {msg && <div className="notice" onClick={() => setMsg("")}>{msg}</div>}
 
-      <div className="desktop">
-        {W ? <W key={win.key} ctx={ctx} params={win.params} onClose={close} /> : <Home ctx={ctx} company={company} />}
-      </div>
-
-      <div className="statusbar">
-        <span className="grow">{msg}</span>
-        <span>Firma: {company}</span>
-        <span>Contracte: {data.contracts.length}</span>
-        <span>Facturi: {data.invoices.length}</span>
-        <span>Plăți: {data.payments.length}</span>
-        <span>Data: {dmy(today)}</span>
+        <W key={win.key} ctx={ctx} params={{ ...win.params, method: win.type === "casa" ? "casa" : win.type === "banca" ? "banca" : win.params.method }}
+          onClose={close} />
       </div>
 
       <input ref={invInput} type="file" multiple accept=".xml,.zip" hidden
@@ -150,38 +182,7 @@ export default function App() {
             return `Import e-Factura: ${r.added} facturi noi din ${r.parsed}${r.errors.length ? ". Erori: " + r.errors.join("; ") : ""}`; }); }} />
       <input ref={payInput} type="file" accept=".csv" hidden
         onChange={(e) => { const f = e.target.files[0]; e.target.value = "";
-          run("Import extras", async () => { const r = await api.importPayments(f); open("plati"); return `Import extras: ${r.payments} plăți`; }); }} />
-    </div>
-  );
-}
-
-function BigBtn({ icon, label, onClick }) {
-  return <button className="bigbtn" onClick={onClick}>{icon}<span>{label}</span></button>;
-}
-
-function Home({ ctx, company }) {
-  const s = ctx.analysis?.summary;
-  const empty = !ctx.data.invoices.length;
-  return (
-    <div className="home">
-      <div className="home-card">
-        <div className="home-h">{company}</div>
-        {empty ? (
-          <p>Nu există date. Importă facturile din e-Factura (<b>Verificare → Import</b>) sau{" "}
-            <button className="link" onClick={() => ctx.run("Date demo", async () => { await api.loadDemo(); ctx.open("verificare"); return "Date demo încărcate"; })}>
-              încarcă datele demo</button>.</p>
-        ) : s && (
-          <table className="home-t"><tbody>
-            <tr><td>Facturi primite verificate</td><td className="r">{s.invoices}</td></tr>
-            <tr><td>Facturi cu erori față de contract</td><td className="r err">{s.error}</td></tr>
-            <tr><td>Facturi cu atenționări</td><td className="r warn">{s.warning}</td></tr>
-            <tr><td>Sume de recuperat / contestat</td><td className="r b">{s.recoverable.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei</td></tr>
-            <tr><td>Restanțe de plată</td><td className="r err">{s.overdue.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei</td></tr>
-            <tr><td>Facturi lipsă</td><td className="r warn">{s.missing}</td></tr>
-          </tbody></table>
-        )}
-        {!empty && <button className="wbtn" onClick={() => ctx.open("verificare")}>Deschide verificarea</button>}
-      </div>
+          run("Import extras", async () => { const r = await api.importPayments(f); open("banca"); return `Import extras: ${r.payments} plăți`; }); }} />
     </div>
   );
 }

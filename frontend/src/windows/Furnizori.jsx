@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { dmy, lei } from "../api.js";
-import { Dot } from "../icons.jsx";
-import { BottomBar, Btn, Grid, LinkBar, Window } from "../ui.jsx";
+import { Check, Copy, Dot, ExportI, Paste, Print, Search } from "../icons.jsx";
+import { Grid, Group, LinkBar, TBtn, Window } from "../ui.jsx";
 import { partners } from "./shared.jsx";
 
 /** Furnizori + fișa furnizorului (facturi și plăți, cu sold cumulat). */
-export default function Furnizori({ ctx, onClose }) {
-  const rows = useMemo(() => partners(ctx), [ctx]);
-  const [sel, setSel] = useState(rows[0]?.cui);
-  const [find, setFind] = useState("");
+export default function Furnizori({ ctx, params, onClose }) {
+  const rows = useMemo(() => partners(ctx).sort((a, b) => a.name.localeCompare(b.name, "ro")).map((p, i) => ({ ...p, cod: String(i + 1).padStart(4, "0") })), [ctx]);
+  const [sel, setSel] = useState(params.select || rows[0]?.cui);
+  const [q, setQ] = useState("");
+  const [f, setF] = useState({ cod: "", name: "", cui: "" });
   const cur = rows.find((p) => p.cui === sel);
 
   const fisa = useMemo(() => {
@@ -30,44 +31,59 @@ export default function Furnizori({ ctx, onClose }) {
   }, [cur, ctx]);
 
   const columns = [
-    { key: "status", w: 18, render: (p) => <Dot status={p.errors ? "error" : p.warnings ? "warning" : "ok"} />, sortValue: (p) => -p.errors },
-    { key: "cui", label: "Cod fiscal", w: 90 },
-    { key: "name", label: "Denumire", w: 230 },
-    { key: "contracts", label: "Contracte", w: 70, align: "r" },
-    { key: "invoices", label: "Facturi", w: 60, align: "r" },
-    { key: "rulaj", label: "Rulaj", w: 100, align: "r", render: (p) => lei(p.rulaj) },
-    { key: "paid", label: "Plătit", w: 100, align: "r", render: (p) => lei(p.paid) },
-    { key: "sold", label: "Sold", w: 100, align: "r", bold: true, render: (p) => lei(p.sold) },
-    { key: "probleme", label: "Probleme", w: 160, render: (p) => [p.errors && `${p.errors} erori`, p.warnings && `${p.warnings} atenționări`].filter(Boolean).join(", ") || "—" },
+    { key: "cod", label: "Cod", w: 50 },
+    { key: "name", label: "Denumire", w: 220 },
+    { key: "cui", label: "Cod fiscal / CNP", w: 100 },
+    { key: "analitic", label: "Cont analitic", w: 90, render: (p) => `401.${p.cod}` },
+    { key: "tara", label: "Țara", w: 40, render: () => "RO" },
+    { key: "contracts", label: "Contracte", w: 64, align: "r" },
+    { key: "invoices", label: "Facturi", w: 56, align: "r" },
+    { key: "rulaj", label: "Rulaj", w: 96, align: "r", cls: "grey", render: (p) => lei(p.rulaj) },
+    { key: "paid", label: "Plătit", w: 96, align: "r", cls: "grey", render: (p) => lei(p.paid) },
+    { key: "sold", label: "Sold", w: 96, align: "r", cls: "pink", bold: true, render: (p) => lei(p.sold) },
+    { key: "verif", label: "Verificare contract", w: 170, sortValue: (p) => -p.errors,
+      render: (p) => <span className="verif-cell"><Dot status={p.errors ? "error" : p.warnings ? "warning" : "ok"} />
+        {[p.errors && `${p.errors} erori`, p.warnings && `${p.warnings} atenționări`].filter(Boolean).join(", ") || "Corect"}</span> },
   ];
   const fisaCols = [
     { key: "date", label: "Data", w: 80, render: (e) => dmy(e.date) },
     { key: "doc", label: "Document", w: 110 },
-    { key: "expl", label: "Explicație", w: 260, render: (e) => <>{e.status && <Dot status={e.status} />} {e.expl}</> },
-    { key: "debit", label: "Debit (plăți)", w: 100, align: "r", render: (e) => (e.debit ? lei(e.debit) : "") },
-    { key: "credit", label: "Credit (facturi)", w: 110, align: "r", render: (e) => (e.credit ? lei(e.credit) : "") },
-    { key: "sold", label: "Sold", w: 100, align: "r", bold: true, render: (e) => lei(e.sold) },
+    { key: "expl", label: "Explicație", w: 260, render: (e) => <span className="verif-cell">{e.status && <Dot status={e.status} />}{e.expl}</span> },
+    { key: "debit", label: "Debit", w: 100, align: "r", cls: "grey", render: (e) => (e.debit ? lei(e.debit) : "") },
+    { key: "credit", label: "Credit", w: 100, align: "r", cls: "grey", render: (e) => (e.credit ? lei(e.credit) : "") },
+    { key: "sold", label: "Sold", w: 100, align: "r", cls: "pink", bold: true, render: (e) => lei(e.sold) },
   ];
-  const shown = rows.filter((p) => p.name.toLowerCase().includes(find.toLowerCase()) || p.cui.includes(find));
+  const has = (v, s) => String(v).toLowerCase().includes(s.toLowerCase());
+  const shown = rows.filter((p) => has(p.cod, f.cod) && has(p.name, f.name) && has(p.cui, f.cui) && (!q || has(`${p.name} ${p.cui}`, q)));
+  const info = () => alert("Furnizorii se preiau automat din contracte și din facturile e-Factura.");
 
   return (
-    <Window title="Furnizori – fișă furnizor" onClose={onClose}>
-      <LinkBar onAdd={() => alert("Furnizorii se preiau automat din contracte și din facturile e-Factura.")}
-        tools={<input className="find" placeholder="Caută furnizor / CUI" value={find} onChange={(e) => setFind(e.target.value)} />} />
-      <div className="stack">
-        <Grid columns={columns} rows={shown} getId={(p) => p.cui} selected={sel} onSelect={setSel}
-          onOpen={(p) => ctx.open("intrari", { furnizor: p.name })} defaultSort={{ key: "name", dir: "asc" }} />
-        <LinkBar right={<span className="muted">{cur ? `Fișa furnizorului ${cur.name}` : ""}</span>} />
-        <div className="lines-area">
+    <Window onClose={onClose}>
+      <LinkBar onAdd={info} onEdit={info}
+        tools={<>
+          <Group><TBtn icon={<Copy />} title="Copiere" /><TBtn icon={<Paste />} title="Lipire" /><TBtn icon={<ExportI />} title="Export date" /></Group>
+          <div className="search"><input placeholder="Căutare..." value={q} onChange={(e) => setQ(e.target.value)} /><TBtn icon={<Search />} onClick={() => {}} title="Căutare" /></div>
+          <Group>
+            <TBtn icon={<Check />} label="Verificare" onClick={() => cur && ctx.open("intrari", { furnizor: cur.name })} title="Facturile furnizorului verificate față de contract" />
+            <TBtn icon={<Check />} label="Verificare toți furnizorii" onClick={() => ctx.open("verificare")} />
+          </Group>
+          <Group><TBtn icon={<Print />} title="Tipărire" onClick={() => window.print()} /></Group>
+        </>} />
+      <div className="split">
+        <div className="pane top">
+          <Grid columns={columns} rows={shown} getId={(p) => p.cui} selected={sel} onSelect={setSel}
+            onOpen={(p) => ctx.open("intrari", { furnizor: p.name })} />
+          <div className="filterrow">
+            <input placeholder="Cod" style={{ width: 50 }} value={f.cod} onChange={(e) => setF({ ...f, cod: e.target.value })} />
+            <input placeholder="Denumire" style={{ width: 220 }} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+            <input placeholder="Cod fiscal / CNP" style={{ width: 100 }} value={f.cui} onChange={(e) => setF({ ...f, cui: e.target.value })} />
+          </div>
+        </div>
+        <div className="pane bottom">
+          <div className="toolbar"><span className="chk"><b>Fișa furnizorului</b>{cur ? ` ${cur.name} · cont 401.${cur.cod}` : ""}</span></div>
           <Grid columns={fisaCols} rows={fisa} selected={null} empty="Fără mișcări." />
         </div>
       </div>
-      <BottomBar>
-        <Btn onClick={() => ctx.open("scadentar")}>Scadențar...</Btn>
-        <Btn onClick={() => window.print()}><u>T</u>ipărire...</Btn>
-        <span className="grow" />
-        <Btn className="exit" onClick={onClose}>Ieșire</Btn>
-      </BottomBar>
     </Window>
   );
 }

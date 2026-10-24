@@ -28,14 +28,17 @@ Pentru extragerea contractelor cu Claude setează `ANTHROPIC_API_KEY` înainte d
 
 ## Interfața
 
-Arată și se folosește ca un program de contabilitate desktop: meniu (Fișiere, Operații, Verificare, Situații - Listări, Declarații, Salarii, Administrare), bară cu iconițe mari, ferestre cu grilă principală + grilă de detaliu, bara „Adaug / Modific / Șterg”, butoane jos (Validez, Plată..., Devalidez, Ieșire), rânduri validate cu lacăt, sortare din capul de coloană, total în subsolul grilei.
+Arată și se folosește ca programele de contabilitate web cu care lucrează contabilii: bară laterală cu numele modulului, meniu Fișiere / Operații / Situații / Diverse / Administrare cu aceeași structură, grilă principală + grilă de detaliu cu antet gri, coloane de valori gri și „Neachitat” roz, rândul selectat albastru, rânduri validate cu lacăt, rând de filtre sub grilă, bara „Adaug / Modific / Șterg” și butoanele de jos (Validez, Plată, Stornez, N.C., Tipărire, Devalidez).
 
-Scurtături: Ins – Adaug, Enter / dublu-click – Modific, Del – Șterg, săgeți – navigare, Esc – Ieșire.
+Scurtături:
+- ALT+1 Furnizori, ALT+3 Intrări, ALT+5 Registru de casă, ALT+6 Jurnal de bancă, ALT+9 Contracte furnizori, ALT+0 Verificare
+- ALT+A / M / S – Adaug / Modific / Șterg în grila de sus; ALT+V Validez, ALT+P Plată, ALT+D Devalidez, ALT+E Tipărire
+- Ins, Enter / dublu-click, Del, săgeți; Esc revine la Intrări
 
 | Fereastră | Ce face |
 |---|---|
 | Intrări | facturile primite din e-Factura, cu liniile, prețul din contract, diferența, contul de cheltuială și panoul „Detalii” cu verificarea; Validez / Devalidez, Plată..., Contestație... |
-| Plăți | plăți prin casă / bancă, adăugare manuală sau import extras |
+| Jurnal de bancă / Registru de casă | zilele cu plăți sus, operațiile zilei jos (401 / 5121 sau 5311); adăugare manuală sau import extras |
 | Furnizori | rulaj, plătit, sold și fișa furnizorului cu sold cumulat |
 | Contracte | fișele contractelor (completate de AI din PDF) și facturile lunare pe fiecare contract, inclusiv lunile lipsă |
 | Verificare | toate neconcordanțele, cu suma de recuperat |
@@ -47,7 +50,7 @@ Meniurile care nu țin de verificarea facturilor (Clienți, Ieșiri, Note contab
 
 1. **Contract → fișă** (`backend/app/extract.py`): PDF/TXT trimis la Claude cu răspuns JSON structurat (preț, TVA, termen, penalități, indexare, valabilitate). Utilizatorul corectează fișa înainte de salvare.
 2. **Facturi** (`backend/app/efactura.py`): XML UBL CIUS-RO sau ZIP descărcat din SPV.
-3. **Plăți**: CSV `numar_factura;cui_furnizor;data;suma` (export din registrul de bancă).
+3. **Plăți**: CSV `numar_factura;cui_furnizor;data;suma[;metoda]` (metoda: banca / casa) (export din registrul de bancă).
 4. **Reguli** (`backend/app/rules.py`): deterministe, fără AI, fiecare alertă cu suma de recuperat.
 5. **Rezultat**: dashboard, comparație factură ↔ contract, email de contestație, raport CSV pentru Excel.
 

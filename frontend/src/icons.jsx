@@ -1,67 +1,49 @@
-// Iconițe proprii, desenate simplu (nu sunt preluate din alt program).
+// Iconițe proprii, desenate simplu, în culoarea textului (currentColor).
 import React from "react";
 
-const S = ({ size = 16, children, vb = 16 }) => (
-  <svg width={size} height={size} viewBox={`0 0 ${vb} ${vb}`} aria-hidden="true">{children}</svg>
+const I = ({ children, size = 12, vb = 16, title }) => (
+  <svg className="ico" width={size} height={size} viewBox={`0 0 ${vb} ${vb}`} fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden={!title}>{title && <title>{title}</title>}{children}</svg>
 );
 
-export const Lock = () => (
-  <S size={12}>
-    <path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#7a1010" strokeWidth="1.6" />
-    <rect x="3.5" y="7" width="9" height="7" rx="1" fill="#c62828" stroke="#7a1010" />
-  </S>
-);
+export const Plus = () => <I><path d="M8 2.5v11M2.5 8h11" strokeWidth="2.2" /></I>;
+export const Pencil = () => <I><path d="M3 13l1-3.5L11 2.5l2.5 2.5-7 7z" /><path d="M9.5 4l2.5 2.5" /></I>;
+export const Trash = () => <I><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.8 9h6.4l.8-9" /></I>;
+export const Copy = () => <I><rect x="5" y="5" width="8.5" height="8.5" rx="1" /><path d="M3 10.5V3a.5.5 0 0 1 .5-.5H10" /></I>;
+export const Paste = () => <I><rect x="3" y="3" width="10" height="11" rx="1" /><path d="M6 2h4v2.5H6z" /></I>;
+export const ExportI = () => <I><path d="M2.5 3h7v10h-7z" /><path d="M8 8h6M11.5 5.5L14 8l-2.5 2.5" /></I>;
+export const Search = () => <I><circle cx="7" cy="7" r="4.2" /><path d="M10.2 10.2l3.5 3.5" strokeWidth="2.2" /></I>;
+export const FilterI = () => <I><path d="M2 3h12L9.5 8.5V13l-3-1.5v-3z" fill="currentColor" stroke="none" /></I>;
+export const Folder = () => <I><path d="M1.8 4.5h4.5l1.2 1.5h6.7v7.5H1.8z" fill="currentColor" stroke="none" /></I>;
+export const Print = () => <I><path d="M4.5 6V2.5h7V6M4.5 11H2.5V6h11v5h-2" /><path d="M4.5 9h7v4.5h-7z" /></I>;
+export const Sync = () => <I><path d="M13 6.5A5 5 0 0 0 4 4.5L2.5 6M3 9.5A5 5 0 0 0 12 11.5l1.5-1.5" /><path d="M2.5 2.5V6H6M13.5 13.5V10H10" /></I>;
+export const Lock = () => <I><rect x="3.5" y="7" width="9" height="7" rx="1" fill="currentColor" stroke="none" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></I>;
+export const Unlock = () => <I><rect x="3.5" y="7" width="9" height="7" rx="1" fill="currentColor" stroke="none" /><path d="M5.5 7V5a2.5 2.5 0 0 1 4.8-1" /></I>;
+export const Tag = () => <I><path d="M2 8.5V2.5h6l6 6-6 6z" fill="currentColor" stroke="none" /><circle cx="5" cy="5.5" r="1.1" fill="#fff" stroke="none" /></I>;
+export const Arrows = () => <I><path d="M2 5h11M10.5 2.5L13 5l-2.5 2.5M14 11H3M5.5 8.5L3 11l2.5 2.5" /></I>;
+export const Doc = () => <I><path d="M3.5 1.8h6l3 3v9.4h-9z" /><path d="M9.5 1.8v3h3" /></I>;
+export const Gavel = () => <I><path d="M7 2.5l4 4M5 4.5l4 4M6 3.5l-2 2 4 4 2-2zM8.5 8l5 5" /></I>;
+export const Chevrons = () => <I><path d="M3 4l4 4-4 4M8.5 4l4 4-4 4" /></I>;
+export const Bell = () => <I><path d="M4 11V7a4 4 0 0 1 8 0v4l1.5 1.5h-11zM6.5 14h3" fill="currentColor" /></I>;
+export const Logout = () => <I><path d="M6.5 2.5h-4v11h4M10 5l3 3-3 3M13 8H6" /></I>;
+export const Book = () => <I size={14}><path d="M1.5 3c2.5-1 4.5-.5 6.5 1 2-1.5 4-2 6.5-1v10c-2.5-1-4.5-.5-6.5 1-2-1.5-4-2-6.5-1z" fill="currentColor" stroke="none" /><path d="M8 4v10" stroke="#fff" strokeWidth="1" /></I>;
+export const Contrast = () => <I size={14}><path d="M1.5 14.5V1.5h13z" fill="currentColor" stroke="none" /><path d="M1.5 14.5h13V1.5" /></I>;
+export const Check = () => <I><path d="M2.5 8.5l3.5 3.5 7.5-8" strokeWidth="2.2" /></I>;
+export const Mail = () => <I><rect x="1.8" y="3.5" width="12.4" height="9" rx="1" /><path d="M2 4l6 5 6-5" /></I>;
+export const Warn = () => <I><path d="M8 1.5L15 14H1z" fill="currentColor" stroke="none" /><path d="M8 6v3.5M8 11.5v.2" stroke="#fff" strokeWidth="1.6" /></I>;
+export const Caret = () => <svg className="caret" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M0 2h8L4 6.5z" fill="currentColor" /></svg>;
+
 export const Dot = ({ status }) => (
-  <S size={12}><circle cx="8" cy="8" r="5" fill={{ ok: "#2e8b3a", warning: "#e0a000", error: "#d32f2f" }[status] || "#bbb"} stroke="#0003" /></S>
-);
-export const Find = () => (
-  <S><circle cx="6.5" cy="6.5" r="4" fill="#e8f1fb" stroke="#3b5e8c" strokeWidth="1.5" /><path d="M9.5 9.5l4.5 4.5" stroke="#3b5e8c" strokeWidth="2" /></S>
-);
-export const Excel = () => (
-  <S><rect x="1.5" y="1.5" width="13" height="13" rx="1.5" fill="#1e7b45" /><path d="M5 4.5l6 7M11 4.5l-6 7" stroke="#fff" strokeWidth="1.7" /></S>
-);
-export const Printer = () => (
-  <S><rect x="4" y="1.5" width="8" height="4" fill="#fff" stroke="#555" /><rect x="1.5" y="5.5" width="13" height="6" rx="1" fill="#9aa7b8" stroke="#555" /><rect x="4" y="9.5" width="8" height="5" fill="#fff" stroke="#555" /></S>
-);
-export const Refresh = () => (
-  <S><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none" stroke="#2c6db5" strokeWidth="1.8" /><path d="M12.5 1.5v3.5H9" fill="none" stroke="#2c6db5" strokeWidth="1.8" /></S>
-);
-export const Filter = () => (
-  <S><path d="M1.5 2.5h13l-5 6v5l-3 1.5v-6.5z" fill="#f4d35e" stroke="#8a6d00" /></S>
+  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+    <circle cx="5" cy="5" r="4" fill={{ ok: "#2e9d55", warning: "#e7a100", error: "#e0383e" }[status] || "#bbb"} />
+  </svg>
 );
 
-// iconițe mari pentru bara principală
-const B = ({ children }) => <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">{children}</svg>;
-export const Big = {
-  furnizori: () => (
-    <B><circle cx="12" cy="10" r="5" fill="#f2c18d" stroke="#8a5a2b" /><path d="M3 27c1-7 5-10 9-10s8 3 9 10z" fill="#3d6fb6" stroke="#22457a" />
-      <rect x="18" y="15" width="11" height="13" rx="1" fill="#fff" stroke="#555" /><path d="M20 19h7M20 22h7M20 25h5" stroke="#888" /></B>
-  ),
-  intrari: () => (
-    <B><rect x="6" y="3" width="18" height="24" fill="#fff" stroke="#555" /><path d="M9 8h12M9 12h12M9 16h8" stroke="#999" />
-      <path d="M2 21h11" stroke="#2e8b3a" strokeWidth="3" /><path d="M10 16l5 5-5 5z" fill="#2e8b3a" /><text x="17" y="25" fontSize="7" fill="#c62828" fontWeight="bold">lei</text></B>
-  ),
-  plati: () => (
-    <B><rect x="2" y="9" width="28" height="16" rx="2" fill="#7cb342" stroke="#33691e" /><circle cx="16" cy="17" r="5" fill="#c5e1a5" stroke="#33691e" />
-      <text x="13.5" y="20" fontSize="8" fill="#33691e" fontWeight="bold">$</text></B>
-  ),
-  contracte: () => (
-    <B><rect x="6" y="2" width="20" height="27" fill="#fffbe6" stroke="#8a6d00" /><path d="M10 7h12M10 11h12M10 15h12M10 19h7" stroke="#b39a4a" />
-      <path d="M11 25c2-3 3 1 5-2s3 2 6-1" fill="none" stroke="#1a3d8f" strokeWidth="1.5" /></B>
-  ),
-  verificare: () => (
-    <B><rect x="4" y="3" width="17" height="23" fill="#fff" stroke="#555" /><path d="M7 8h11M7 12h11M7 16h7" stroke="#999" />
-      <circle cx="21" cy="21" r="7" fill="#e3f2e5" stroke="#2e8b3a" strokeWidth="2" /><path d="M17.5 21l2.5 2.5 4.5-5" fill="none" stroke="#2e8b3a" strokeWidth="2.2" /></B>
-  ),
-  scadentar: () => (
-    <B><rect x="3" y="5" width="26" height="23" rx="2" fill="#fff" stroke="#555" /><rect x="3" y="5" width="26" height="6" fill="#d32f2f" />
-      <path d="M8 2v6M24 2v6" stroke="#555" strokeWidth="2" /><path d="M7 15h4M14 15h4M21 15h4M7 20h4M14 20h4M21 20h4" stroke="#999" strokeWidth="2" /></B>
-  ),
-  raport: () => (
-    <B><rect x="4" y="3" width="24" height="26" fill="#fff" stroke="#555" /><rect x="8" y="17" width="4" height="8" fill="#3d6fb6" />
-      <rect x="14" y="12" width="4" height="13" fill="#2e8b3a" /><rect x="20" y="8" width="4" height="17" fill="#e0a000" /></B>
-  ),
-  iesire: () => (
-    <B><rect x="5" y="3" width="15" height="26" fill="#d7ccc8" stroke="#5d4037" /><path d="M14 16h14" stroke="#c62828" strokeWidth="3" /><path d="M24 11l5 5-5 5z" fill="#c62828" /></B>
-  ),
-};
+/** Sigla aplicației (proprie). */
+export const Logo = () => (
+  <svg width="58" height="18" viewBox="0 0 58 18" aria-label="Bill vs Signed">
+    <rect x="0" y="1" width="16" height="16" rx="3" fill="#0373a1" />
+    <path d="M4 9.5l2.8 2.8L12 6.5" stroke="#fff" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <text x="20" y="13.5" fontFamily="Open Sans, Segoe UI, sans-serif" fontWeight="800" fontSize="12" fill="#0373a1" letterSpacing=".5">BvS</text>
+  </svg>
+);

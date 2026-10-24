@@ -134,7 +134,9 @@ def build():
         amount = {"full": total, "none": 0, "double": total * 2}.get(pay, pay)
         if amount:
             plati.append({"numar_factura": number, "cui_furnizor": "RO" + sup[1],
-                          "data": (issue + timedelta(days=min(term, 10))).isoformat(), "suma": f"{amount:.2f}"})
+                          "data": (issue + timedelta(days=min(term, 10))).isoformat(), "suma": f"{amount:.2f}",
+                          # curățenia se plătește cash, restul prin bancă
+                          "metoda": "casa" if sup[1] == "16180339" else "banca"})
 
     for m in range(1, 11):
         per = (date(2026, m, 1), month_end(2026, m))
@@ -171,7 +173,7 @@ def build():
          (date(2026, 9, 12), date(2026, 9, 12)))
 
     with (OUT / "plati.csv").open("w", encoding="utf-8-sig", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["numar_factura", "cui_furnizor", "data", "suma"], delimiter=";")
+        w = csv.DictWriter(f, fieldnames=["numar_factura", "cui_furnizor", "data", "suma", "metoda"], delimiter=";")
         w.writeheader()
         w.writerows(plati)
     (OUT / "contracte.json").write_text(json.dumps(CONTRACTE, ensure_ascii=False, indent=1), "utf-8")

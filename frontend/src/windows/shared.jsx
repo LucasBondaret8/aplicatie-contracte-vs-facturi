@@ -77,7 +77,7 @@ export function PaymentModal({ ctx, initial, onClose }) {
   };
   return (
     <Modal title={p.id ? "Modific plată" : "Adaug plată"} onClose={onClose}
-      footer={<><Btn onClick={save} disabled={!p.supplier_cui || !p.invoice_number || !p.amount}><u>S</u>alvez</Btn><Btn onClick={onClose}>Renunț</Btn></>}>
+      footer={<><Btn className="primary" onClick={save} disabled={!p.supplier_cui || !p.invoice_number || !p.amount}>Salvez</Btn><Btn onClick={onClose}>Renunț</Btn></>}>
       <div className="form">
         <Field label="Tip"><select value={p.method} onChange={set("method")}><option value="banca">B – Bancă</option><option value="casa">C – Casă</option></select></Field>
         <Field label="Nr. document"><input value={p.doc} onChange={set("doc")} placeholder="OP / chitanță" /></Field>
@@ -158,10 +158,10 @@ export function ContractModal({ ctx, initial, onClose }) {
   return (
     <Modal title={`Contract furnizor${source ? ` · ${source === "claude" ? "completat cu Claude" : source === "heuristic" ? "completat automat" : "salvat"}` : ""}`}
       onClose={onClose} width={780}
-      footer={<><Btn onClick={save} disabled={!has}><u>S</u>alvez</Btn><Btn onClick={onClose}>Renunț</Btn></>}>
+      footer={<><Btn className="primary" onClick={save} disabled={!has}>Salvez</Btn><Btn onClick={onClose}>Renunț</Btn></>}>
       {!initial && (
         <div className="upload">
-          <label className="wbtn primary">
+          <label className="bbtn primary">
             {busy ? "Se citește contractul..." : "Încarcă contractul (PDF / TXT)..."}
             <input type="file" accept=".pdf,.txt" hidden disabled={busy} onChange={(e) => e.target.files[0] && upload(e.target.files[0])} />
           </label>
